@@ -579,19 +579,6 @@
       </section>
     </section>
 
-    <!-- ============================================
-         EXPORTAR / IMPORTAR
-         ============================================ -->
-    <section style="padding:1rem 0 2rem; display:flex; gap:.75rem; flex-wrap:wrap;">
-      <button class="action-btn" id="btnExport">
-        <span class="action-btn__icon">&#8679;</span> Exportar JSON
-      </button>
-      <label class="action-btn" for="fileImport" style="cursor:pointer; text-align:center;">
-        <span class="action-btn__icon">&#8593;</span> Importar JSON
-      </label>
-      <input type="file" id="fileImport" accept=".json,application/json" hidden>
-    </section>
-
   </div><!-- /.app -->
 
   <!-- ============================================================
@@ -713,46 +700,6 @@
 
     function saveData() {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(_) {}
-    }
-
-    /** Exporta todo como archivo JSON descargable */
-    function exportJSON() {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}`;
-      a.href = url;
-      a.download = `rendimiento_${dateStr}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    /** Importa un JSON descargado previamente */
-    function importJSON(file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const json = JSON.parse(e.target.result);
-          data = {};
-          for (const [key, val] of Object.entries(json)) {
-            data[key] = {
-              workDay: val.workDay !== undefined ? val.workDay : null,
-              counts: {
-                CORR:  val.counts?.CORR  ?? 0,
-                PRECO: val.counts?.PRECO ?? 0,
-                PREV:  val.counts?.PREV  ?? 0,
-                EI:    val.counts?.EI     ?? 0,
-                TV:    val.counts?.TV     ?? 0
-              }
-            };
-          }
-          saveData();
-          renderAll();
-        } catch (_) {
-          alert('Error al importar: el archivo no tiene un formato válido.');
-        }
-      };
-      reader.readAsText(file);
     }
 
     /* =========================================================
@@ -1356,22 +1303,7 @@
           });
         }
 
-        // Exportar
-        const exportBtn = document.getElementById('btnExport');
-        if (exportBtn) exportBtn.addEventListener('click', exportJSON);
-
-        // Importar
-        const importFileInput = document.getElementById('fileImport');
-        if (importFileInput) {
-          importFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            try { importJSON(file); } catch(_) {}
-            file.value = ''; // Reset para poder elegir el mismo archivo de nuevo
-          });
-        }
-
-        renderAll();
+          renderAll();
       } catch(err) {
         console.error('Error crítico:', err);
         const app = document.getElementById('app');
