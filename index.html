@@ -985,9 +985,6 @@
       // Botón toggle laboral (visible solo si el día es sa/do o fue desmarcado manualmente)
       updateWorkToggle();
 
-      // Listeners de los botones +/− se adjuntan en renderLoadButtons()
-      attachLoadListeners();
-
       // Actualizar total del día
       const dayTotalValue = document.getElementById('dayTotalValue');
       if (dayTotalValue) dayTotalValue.textContent = fmt(dayPoints(data[selectedDay] || { counts: {} }));
@@ -1247,25 +1244,26 @@
     }
 
     /* =========================================================
-       RENDERIZADO DE BOTONES +/− con listeners
+       EVENT DELEGATION — se llama UNA sola vez al init
+       No usar renderLoadGrid para agregar listeners (acumularía clicks)
        ========================================================= */
 
-    function attachLoadListeners() {
-      $$('.task-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    function delegateClicks() {
+      const loadGrid = document.getElementById('loadGrid');
+      if (loadGrid) {
+        loadGrid.addEventListener('click', (e) => {
+          const btn = e.target.closest('.task-btn');
+          if (!btn) return;
           e.preventDefault();
           const type = btn.dataset.type;
-          // Usar constante explícita en lugar de parseInt(btn.dir, 10)
-          // porque btn.dir no funciona bien en <button> para valores "+1"/"-1"
-          const delta = (btn.classList.contains('task-btn--plus')) ? +1 : -1;
+          const delta = btn.classList.contains('task-btn--plus') ? +1 : -1;
           adjustCount(type, delta);
         });
-      });
+      }
 
-      const btnToggle = document.getElementById('toggleWorkDay');
-      if (btnToggle) {
-        btnToggle.addEventListener('click', (e) => {
-          e.preventDefault();
+      const toggleBtn = document.getElementById('toggleWorkDay');
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
           toggleWorkDay(selectedDay);
         });
       }
@@ -1336,6 +1334,9 @@
         if (!selectedDay) {
           selectedDay = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         }
+
+        // Delegación de clicks — UNA SOLA VEZ por elemento persistente
+        delegateClicks();
 
         // Navegación de meses
         const prevBtn = document.getElementById('prevMonth');
