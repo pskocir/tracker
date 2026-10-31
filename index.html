@@ -1214,24 +1214,32 @@
       const key = dateStr || selectedDay;
       if (!key) return;
 
-      const entry = data[key] || { workDay: null, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+      // Calcular el día de la semana (ISO: Lu=1..Do=5,Sa=6,Do=7) antes de crear entrada
+      const rawDow = new Date(key.split('-')[0], key.split('-')[1] - 1, key.split('-')[2]).getDay();
+      const isoDow = rawDow === 0 ? 7 : rawDow;
+      const isDefaultWork = DEFAULT_WORK_DAYS.includes(isoDow);
 
-      // Si no existe la entrada aún, crearla (sin carga por default salvo que sea sa/do)
+      // Si no existe la entrada aún, crearla con el valor correcto por defecto
       if (!data[key]) {
-        data[key] = { workDay: null, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+        if (isDefaultWork) {
+          // Lu-Vi: por defecto laborales → workDay = true
+          data[key] = { workDay: true, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+        } else {
+          // Sa/Do: por defecto no laborales → workDay = false
+          data[key] = { workDay: false, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+        }
+        saveData();
+        renderAll();
+        return;
       }
 
-      // Alternar el flag de laboral (null = usar default)
-      const isoDow = new Date(key.split('-')[0], key.split('-')[1] - 1, key.split('-')[2]).getDay();
-      const isoDowNorm = isoDow === 0 ? 7 : isoDow;
-
-      if (entry.workDay === null || entry.workDay === undefined) {
-        // Toggle: si es default workday → desmarcar, si no → marcar
-        const isDefaultWork = DEFAULT_WORK_DAYS.includes(isoDowNorm);
-        data[key].workDay = !isDefaultWork;
+      // La entrada ya existe → toggle del valor actual
+      if (data[key].workDay) {
+        // Estaba marcado como laboral → desmarcar (= false = usar default)
+        data[key].workDay = false;
       } else {
-        // Ya fue marcado manualmente → volver a default (null)
-        data[key].workDay = null;
+        // No estaba marcado (false/null) → marcar como laboral (= true)
+        data[key].workDay = true;
       }
 
       saveData();
