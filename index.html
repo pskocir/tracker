@@ -1254,11 +1254,11 @@
         });
       });
 
-      const toggleWorkDay = document.getElementById('toggleWorkDay');
-      if (toggleWorkDay) {
-        toggleWorkDay.addEventListener('click', (e) => {
+      const btnToggle = document.getElementById('toggleWorkDay');
+      if (btnToggle) {
+        btnToggle.addEventListener('click', (e) => {
           e.preventDefault();
-          toggleWorkDay();
+          toggleWorkDay(selectedDay);
         });
       }
     }
