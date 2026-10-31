@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rendimiento Mensual</title>
+
+  <!-- Tipografía Inter (Google Fonts) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES — MODO CLARO (default)
+       ============================================================ */
+    :root {
+      --bg:           #f4f5f7;
+      --bg-card:      #ffffff;
+      --bg-input:     #f0f1f3;
+      --text:         #1a1a2e;
+      --text-sec:     #6b7280;
+      --border:       #e5e7eb;
+      --accent:       #4f5bd5;
+      --accent-light: #e8eaf6;
+      --accent-dark:  #3a44b0;
+      --green:        #22c55e;
+      --green-bg:     #ecfdf5;
+      --amber:        #f59e0b;
+      --amber-bg:     #fffbeb;
+      --red:          #ef4444;
+      --red-bg:       #fef2f2;
+      --shadow-sm:    0 1px 3px rgba(0,0,0,.06);
+      --shadow-md:    0 4px 12px rgba(0,0,0,.08);
+      --shadow-lg:    0 8px 24px rgba(0,0,0,.10);
+      --radius-sm:    8px;
+      --radius-md:    14px;
+      --radius-lg:    20px;
+      --transition:   .2s ease;
+    }
+
+    /* ============================================================
+       MODO OSCURO (auto por prefers-color-scheme)
+       ============================================================ */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #111827;
+        --bg-card:    #1f2937;
+        --bg-input:   #374151;
+        --text:       #f3f4f6;
+        --text-sec:   #9ca3af;
+        --border:     #374151;
+        --accent:     #818cf8;
+        --accent-light:#312e81;
+        --accent-dark:#a5b4fc;
+        --green:      #4ade80;
+        --green-bg:   #052e16;
+        --amber:      #fbbf24;
+        --amber-bg:   #451a03;
+        --red:        #f87171;
+        --red-bg:     #450a0a;
+        --shadow-sm:  0 1px 3px rgba(0,0,0,.25);
+        --shadow-md:  0 4px 12px rgba(0,0,0,.30);
+        --shadow-lg:  0 8px 24px rgba(0,0,0,.35);
+      }
+    }
+
+    /* ============================================================
+       RESET Y BASE
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 2rem);
+    }
+
+    /* ============================================================
+       LAYOUT PRINCIPAL
+       ============================================================ */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    header.app-header {
+      text-align: center;
+      padding: 1.5rem 0 1rem;
+    }
+    header.app-header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--text-sec);
+    }
+
+    /* ============================================================
+       SECCIÓN DE RESUMEN (tarjetas de métricas)
+       ============================================================ */
+    .summary {
+      display: grid;
+      gap: .75rem;
+      padding: 1rem 0;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.1rem 1.25rem;
+      transition: box-shadow var(--transition);
+    }
+    .summary-card:hover { box-shadow: var(--shadow-md); }
+
+    /* Tarjeta principal de rendimiento */
+    .summary-card--hero {
+      background: var(--accent);
+      color: #fff;
+    }
+    .summary-card--hero .metric-label { color: rgba(255,255,255,.75); }
+    .summary-card--hero .metric-value  { font-size: 2.8rem; line-height: 1; }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+    }
+    .metric-label {
+      font-size: .76rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-sec);
+    }
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    /* Indicador de ventaja sobre referencia */
+    .advantage-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      margin-top: .6rem;
+      padding: .35rem .8rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 600;
+    }
+    .advantage-badge.up {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+    .advantage-badge.neutral,
+    .advantage-badge.down {
+      background: var(--amber-bg);
+      color: var(--amber);
+    }
+    .advantage-badge.pulse {
+      animation: badgePulse .4s ease;
+    }
+    @keyframes badgePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    /* ============================================================
+       TARJETA DE DETALLE POR TIPO (día seleccionado)
+       ============================================================ */
+    .detail-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.1rem 1.25rem;
+    }
+
+    /* Tabla pequeña de desglose por tipo */
+    .detail-table {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: .4rem 1rem;
+      align-items: center;
+    }
+    .detail-row {
+      display: contents;
+    }
+    .detail-label {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      text-align: right;
+    }
+    .detail-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--bg-input);
+      overflow: hidden;
+    }
+    .detail-bar__fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .35s ease, background-color .2s ease;
+    }
+    .detail-value {
+      font-size: .82rem;
+      font-weight: 600;
+      text-align: left;
+      min-width: 3.5ch;
+    }
+
+    /* ============================================================
+       CALENDARIO MENSUAL
+       ============================================================ */
+    .calendar-section { padding: 1rem 0; }
+
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      margin-bottom: .75rem;
+    }
+    .calendar-nav__btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .82rem;
+      font-weight: 500;
+      padding: .45rem 1.1rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background var(--transition), box-shadow var(--transition);
+    }
+    .calendar-nav__btn:hover { box-shadow: var(--shadow-sm); }
+
+    .calendar-month-label {
+      font-size: 1.05rem;
+      font-weight: 600;
+      min-width: 140px;
+      text-align: center;
+    }
+
+    /* Grid del calendario */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .calendar-weekday {
+      text-align: center;
+      font-size: .68rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      padding: .35rem 0;
+      text-transform: uppercase;
+    }
+    .calendar-cell {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border-radius: var(--radius-sm);
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      user-select: none;
+    }
+    .calendar-cell.empty { pointer-events: none; }
+
+    .calendar-cell:not(.empty):hover {
+      background: var(--bg-input);
+    }
+
+    /* Día seleccionado (carga actual) */
+    .calendar-cell.selected {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 0 2px var(--accent-light), var(--shadow-md);
+    }
+
+    /* Hoy (resaltado diferente) */
+    .calendar-cell.today {
+      border: 2px solid var(--accent);
+    }
+    .calendar-cell.selected.today {
+      background: var(--accent);
+      color: #fff;
+      border-color: #fff;
+    }
+
+    /* Día laboral / no laboral indicador */
+    .calendar-cell .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      pointer-events: none;
+      transition: opacity var(--transition);
+    }
+
+    /* No laboral sin carga → point */
+    .calendar-cell.nonwork-day .dot {
+      background: var(--text-sec);
+    }
+
+    /* Con puntaje, cambia color del dot */
+    .calendar-cell.has-score .dot { background: var(--green); }
+
+    /* Sin días laborales marcados */
+    .calendar-cell.no-labor .dot { opacity: .25; }
+
+    /* ============================================================
+       BOTONES DE CARGA (+/−)
+       ============================================================ */
+
+    .load-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+    }
+
+    .load-grid {
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+
+    .load-row {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto auto;
+      align-items: center;
+      gap: .5rem 0.75rem;
+    }
+
+    .task-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1.6rem;
+      font-weight: 400;
+      cursor: pointer;
+      transition: all .15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .task-btn:active {
+      transform: scale(.92);
+    }
+    .task-btn--plus {
+      border-color: var(--green);
+      background: var(--bg-input);
+    }
+    .task-btn--plus:hover {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+    .task-btn--minus {
+      border-color: var(--red);
+      background: var(--bg-input);
+    }
+    .task-btn--minus:hover {
+      background: var(--red-bg);
+      color: var(--red);
+    }
+
+    .task-info {
+      display: flex;
+      align-items: baseline;
+      gap: .3rem;
+    }
+    .task-name {
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .task-value {
+      font-size: .76rem;
+      color: var(--text-sec);
+    }
+
+    .task-counter {
+      width: 3ch;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+      transition: transform .15s ease;
+    }
+    .task-counter.bump {
+      animation: bumpCount .2s ease;
+    }
+    @keyframes bumpCount {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+    }
+
+    /* Total del día */
+    .day-total-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: .8rem 1rem;
+      background: var(--accent-light);
+      border-radius: var(--radius-sm);
+    }
+    .day-total-bar .metric-label { color: inherit; margin-bottom:0; }
+    .day-total__value { font-size: 1.3rem !important; }
+
+    /* ============================================================
+       TOGGLE DÍA LABORAL
+       ============================================================ */
+    .work-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .7rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: all .15s ease;
+    }
+    .work-toggle:active { transform: scale(.97); }
+    .work-toggle.active {
+      border-color: var(--green);
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    /* ============================================================
+       BOTONES DE ACCIÓN (export / import)
+       ============================================================ */
+    .action-btn {
+      flex: 1;
+      min-width: 0;
+      padding: .75rem 1rem;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .action-btn:hover { box-shadow: var(--shadow-sm); }
+    .action-btn:active { transform: scale(.97); }
+    .action-btn__icon { font-size: 1rem; margin-right: .3rem; }
+
+    /* ============================================================
+       DETALLE POR TIPO DE TAREA
+       ============================================================ */
+    .detail-row { display: contents; }
+
+    /* Animaciones de actualización */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .summary-card, .detail-card, .load-card {
+      animation: fadeSlideIn .3s ease both;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="app" id="app">
+
+    <!-- ============================================
+         HEADER
+         ============================================ -->
+    <header class="app-header">
+      <h1>Rendimiento Mensual</h1>
+    </header>
+
+    <!-- ============================================
+         RESUMEN DEL MES (tarjetas de métricas)
+         ============================================ -->
+    <section class="summary" aria-label="Resumen del mes">
+      <div class="summary-card summary-card--hero">
+        <div class="metric-row">
+          <span class="metric-label">Promedio</span>
+          <span class="metric-value" id="avgDisplay">0,00</span>
+        </div>
+        <div id="advantageContainer"></div>
+      </div>
+
+      <div class="summary-card">
+        <div class="metric-row">
+          <span class="metric-label">Total acumulado</span>
+          <span class="metric-value" id="totalDisplay">0,00</span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="metric-row">
+          <span class="metric-label">Días laborales</span>
+          <span class="metric-value" id="workDaysDisplay">0</span>
+        </div>
+      </div>
+
+      <!-- Detalle por tipo de tarea (día seleccionado) -->
+      <div class="detail-card" id="detailCard" style="display:none;">
+        <p class="metric-label" style="margin-bottom:.6rem;" id="detailLabel">Detalle</p>
+        <div class="detail-table" id="detailTable"></div>
+      </div>
+    </section>
+
+    <!-- ============================================
+         CALENDARIO + CARGA DE DATOS
+         ============================================ -->
+    <section class="calendar-section" aria-label="Calendario y carga">
+
+      <nav class="calendar-nav">
+        <button class="calendar-nav__btn" id="prevMonth" aria-label="Mes anterior">&#8249;</button>
+        <span class="calendar-month-label" id="monthLabel"></span>
+        <button class="calendar-nav__btn" id="nextMonth" aria-label="Mes siguiente">&#8250;</button>
+      </nav>
+
+      <div class="calendar-grid" id="calendarGrid">
+        <span class="calendar-weekday">Lu</span>
+        <span class="calendar-weekday">Ma</span>
+        <span class="calendar-weekday">Mi</span>
+        <span class="calendar-weekday">Ju</span>
+        <span class="calendar-weekday">Vi</span>
+        <span class="calendar-weekday">Sa</span>
+        <span class="calendar-weekday">Do</span>
+      </div>
+
+      <!-- Botón toggle del día laboral -->
+      <div style="height:.5rem;"></div>
+      <button class="work-toggle" id="toggleWorkDay" style="display:none;">
+        <span class="work-toggle__icon" id="toggleIcon">✅</span>
+        <span class="work-toggle__text" id="toggleText">Día laboral</span>
+      </button>
+
+      <!-- Botones de carga -->
+      <section class="load-card" id="loadCard" style="display:none;">
+        <p class="metric-label" style="margin-bottom:.7rem;" id="loadLabel">Carga — 1/11/2024</p>
+
+        <div class="load-grid" id="loadGrid">
+          <!-- Se genera dinámicamente con JS -->
+        </div>
+
+        <!-- Total del día seleccionado -->
+        <div class="day-total-bar" style="margin-top:1rem;">
+          <span class="metric-label">Total del día</span>
+          <span class="metric-value day-total__value" id="dayTotalValue">0,00</span>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================================
+         EXPORTAR / IMPORTAR
+         ============================================ -->
+    <section style="padding:1rem 0 2rem; display:flex; gap:.75rem; flex-wrap:wrap;">
+      <button class="action-btn" id="btnExport">
+        <span class="action-btn__icon">&#8679;</span> Exportar JSON
+      </button>
+      <label class="action-btn" for="fileImport" style="cursor:pointer; text-align:center;">
+        <span class="action-btn__icon">&#8593;</span> Importar JSON
+      </label>
+      <input type="file" id="fileImport" accept=".json,application/json" hidden>
+    </section>
+
+  </div><!-- /.app -->
+
+  <!-- ============================================================
+       JAVASCRIPT — LÓGICA DE LA APLICACIÓN
+       ============================================================ -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* =========================================================
+       CONSTANTES Y CONFIGURACIÓN
+       ========================================================= */
+
+    // Valores por tipo de tarea (puntos unitarios)
+    const TASK_VALUES = {
+      CORR:  1.00,
+      PRECO: 0.50,
+      PREV:  0.65,
+      EI:    0.50,
+      TV:    1.00
+    };
+
+    // Descripciones bonitas (leyenda)
+    const TASK_LABELS = {
+      CORR: 'Correctivo',
+      PRECO: 'Precorrectivo',
+      PREV: 'Preventivo',
+      EI:  'Entrega insumos',
+      TV:  'Tareas varias'
+    };
+
+    // Colores para cada tipo (en fondo claro) — se invierten en oscuro vía CSS vars
+    const TASK_COLORS = {
+      CORR: '#4f5bd5',
+      PRECO: '#8b5cf6',
+      PREV: '#06b6d4',
+      EI:  '#22c55e',
+      TV:  '#f59e0b'
+    };
+
+    // Colores en fondo oscuro se invierten automáticamente con CSS vars
+
+    // Días laborales por defecto (lunes=1 a viernes=5)
+    const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5];
+
+    // Referencia de meta
+    const REFERENCE_POINTS = 7;
+
+    // Claves para localStorage
+    const STORAGE_KEY = 'rendimiento_mensual_data';
+
+    /* =========================================================
+       UTILIDADES DE FECHA (sin librerías externas)
+       ========================================================= */
+
+    /** Formatea un número con coma decimal y 2 decimales (formato argentino) */
+    function fmt(n) {
+      return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    /** Devuelve los días del mes dado como arrays [díaDelMes, díaSemanaISO(1=Lu..7=Do)] */
+    function getMonthDays(year, month) {
+      const days = [];
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      // Cuántos espacios vacíos antes del día 1: (díaSemana - 1) donde Lu=1 → offset 0
+      const emptyBefore = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+      for (let i = 0; i < emptyBefore; i++) days.push(null);
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const date = new Date(year, month, d);
+        days.push([d, date.getDay()]); // [dayOfMonth, dayOfWeek(1=Lu…7=Do)]
+      }
+      return days;
+    }
+
+    /** Nombres de meses en español */
+    const MONTH_NAMES = [
+      'enero','febrero','marzo','abril','mayo','junio',
+      'julio','agosto','septiembre','octubre','noviembre','diciembre'
+    ];
+
+    /* =========================================================
+       ESTADO DE LA APLICACIÓN
+       ========================================================= */
+
+    let currentYear, currentMonth; // mes visible en el calendario
+    let selectedDay = null;         // día seleccionado para carga (null = ninguno)
+
+    /** E structura de datos: { 'YYYY-MM-DD': workDayBool | undefined, counts: { CORR: n, ... } } */
+    let data = {};
+
+    /* =========================================================
+       PERSISTENCIA — localStorage
+       ========================================================= */
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) { return; }
+        const parsed = JSON.parse(raw);
+        // Normalizar estructura
+        data = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          data[key] = {
+            workDay: val.workDay !== undefined ? val.workDay : null,
+            counts: {
+              CORR:  (val.counts && val.counts.CORR)  || 0,
+              PRECO: (val.counts && val.counts.PRECO) || 0,
+              PREV:  (val.counts && val.counts.PREV)  || 0,
+              EI:    (val.counts && val.counts.EI)     || 0,
+              TV:    (val.counts && val.counts.TV)     || 0
+            }
+          };
+        }
+      } catch (_) {
+        data = {};
+      }
+    }
+
+    function saveData() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(_) {}
+    }
+
+    /** Exporta todo como archivo JSON descargable */
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}`;
+      a.href = url;
+      a.download = `rendimiento_${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    /** Importa un JSON descargado previamente */
+    function importJSON(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const json = JSON.parse(e.target.result);
+          data = {};
+          for (const [key, val] of Object.entries(json)) {
+            data[key] = {
+              workDay: val.workDay !== undefined ? val.workDay : null,
+              counts: {
+                CORR:  val.counts?.CORR  ?? 0,
+                PRECO: val.counts?.PRECO ?? 0,
+                PREV:  val.counts?.PREV  ?? 0,
+                EI:    val.counts?.EI     ?? 0,
+                TV:    val.counts?.TV     ?? 0
+              }
+            };
+          }
+          saveData();
+          renderAll();
+        } catch (_) {
+          alert('Error al importar: el archivo no tiene un formato válido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /* =========================================================
+       CÁLCULOS
+       ========================================================= */
+
+    /** Calcula los puntos de un día (dada la estructura data entry) */
+    function dayPoints(entry) {
+      if (!entry || !entry.counts) return 0;
+      let total = 0;
+      for (const type of Object.keys(TASK_VALUES)) {
+        total += (entry.counts[type] || 0) * TASK_VALUES[type];
+      }
+      return total;
+    }
+
+    /** Resumen del mes visible (currentYear, currentMonth) */
+    function monthSummary() {
+      const days = getMonthDays(currentYear, currentMonth);
+      // Filtrar solo días reales del mes
+      const realDays = days.filter(d => d !== null);
+
+      let totalPts = 0;
+      let workDayCountTotal = 0;       // todos los días laborales del mes (por defecto)
+      let loadedDayCount = 0;          // días laborales que YA TIENEN valores cargados > 0
+      let allWorkDaysLoaded = false;   // ¿Ya se completaron todos los días laborales?
+
+      for (const [dayNum] of realDays) {
+        const key = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+        const entry = data[key];
+        // Día es laboral? (por defecto Lu-Vi, salvo override)
+        const dow = dayNum === null ? 0 : (() => {
+          return new Date(currentYear, currentMonth, dayNum).getDay();
+        })();
+
+        let isWorkDay;
+        if (entry && entry.workDay !== null && entry.workDay !== undefined) {
+          isWorkDay = !!entry.workDay;
+        } else {
+          // Por defecto: Lu=1..Vi=5 → laboral; Sa=6, Do=7 → no laboral
+          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
+        }
+
+        if (isWorkDay) workDayCountTotal++;
+
+        const pts = dayPoints(entry);
+        totalPts += pts;
+      }
+
+      // Contar días laborales que YA tienen valores cargados > 0
+      for (const [dayNum] of realDays) {
+        const key = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+        const entry = data[key];
+
+        const dow = dayNum === null ? 0 : (() => {
+          return new Date(currentYear, currentMonth, dayNum).getDay();
+        })();
+
+        let isWorkDay;
+        if (entry && entry.workDay !== null && entry.workDay !== undefined) {
+          isWorkDay = !!entry.workDay;
+        } else {
+          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
+        }
+
+        if (isWorkDay && dayPoints(entry) > 0) {
+          loadedDayCount++;
+        }
+      }
+
+      // ¿Se completaron TODOS los días laborales?
+      allWorkDaysLoaded = (loadedDayCount >= workDayCountTotal);
+
+      // Promedio = total acumulado / días laborables con valores cargados (> 0)
+      const avg = loadedDayCount > 0 ? totalPts / loadedDayCount : 0;
+
+      // Ventaja sobre los 7 puntos de referencia (se calcula con todos los días laborales)
+      const refTotal = REFERENCE_POINTS * workDayCountTotal;
+      let advantage = totalPts - refTotal;
+
+      return {
+        total: totalPts,
+        avg: avg,
+        workDays: workDayCountTotal,           // total del mes
+        loadedDays: loadedDayCount,            // días cargados
+        allWorkDaysLoaded: allWorkDaysLoaded,  // ¿cierre de mes?
+        realDays: realDays.length,
+        advantage: advantage,                  // + está sobre la meta, 0 igual, - debajo
+        referenceTotal: refTotal
+      };
+    }
+
+    /* =========================================================
+       DOM HELPERS
+       ========================================================= */
+
+    function $(sel) { return typeof sel === 'string' && sel.startsWith('#') ? document.getElementById(sel.slice(1)) : document.querySelector(sel); }
+    function $$(sel) { return document.querySelectorAll(sel); }
+    // Helper seguro: devuelve null si el ID no existe, usa el mismo pattern que $(id)
+    const get = id => document.getElementById(id);
+
+    /* =========================================================
+       RENDERIZADO — CALENDARIO
+       ========================================================= */
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      if (!grid) return;
+      // Remover celdas existentes (pero mantener los weekdays)
+      grid.querySelectorAll('.calendar-cell').forEach(el => el.remove());
+
+      const days = getMonthDays(currentYear, currentMonth);
+      const today = new Date();
+
+      for (const day of days) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+
+        if (day === null) {
+          cell.classList.add('empty');
+          grid.appendChild(cell);
+          continue;
+        }
+
+        const [dNum, dow] = day;
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dNum).padStart(2,'0')}`;
+        cell.dataset.date = dateStr;
+        cell.innerHTML = `<span>${dNum}</span><span class="dot"></span>`;
+
+        // Hoy?
+        if (today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === dNum) {
+          cell.classList.add('today');
+        }
+
+        // ¿Es laboral en este día?
+        let isWorkDay = false;
+        const entry = data[dateStr];
+        if (entry && (entry.workDay !== null || entry.workDay !== undefined)) {
+          isWorkDay = !!entry.workDay;
+        } else {
+          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
+        }
+
+        // ¿Tiene carga?
+        const hasScore = dayPoints(entry) > 0;
+        if (isWorkDay && hasScore) cell.classList.add('has-score');
+        if (!isWorkDay) cell.classList.add('nonwork-day');
+
+        // Selección activa
+        if (selectedDay === dateStr) {
+          cell.classList.add('selected');
+        }
+
+        // Click para seleccionar / alternar laboral
+        cell.addEventListener('click', () => {
+          selectedDay = dateStr;
+          renderAll();
+        });
+
+        // Mantener toque largo para alternar laboral (evita doble-interacción en mobile)
+        let pressTimer;
+        cell.addEventListener('touchstart', (e) => {
+          pressTimer = setTimeout(() => {
+            e.preventDefault();
+            toggleWorkDay(dateStr, true);
+          }, 400);
+        }, { passive: true });
+        cell.addEventListener('touchend', () => clearTimeout(pressTimer));
+        cell.addEventListener('touchcancel', () => clearTimeout(pressTimer));
+
+        grid.appendChild(cell);
+      }
+    }
+
+    /* =========================================================
+       RENDERIZADO — GRID DE CARGA (botones +/)
+       ========================================================= */
+
+    function renderLoadGrid() {
+      const grid = document.getElementById('loadGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      if (!selectedDay) {
+        const loadCard = document.getElementById('loadCard');
+        if (loadCard) loadCard.style.display = 'none';
+        const toggle = document.getElementById('toggleWorkDay');
+        if (toggle) toggle.style.display = 'none';
+        return;
+      }
+
+      // Inicializar entrada si no existe (primer toque en un día nuevo)
+      if (!data[selectedDay]) {
+        data[selectedDay] = { workDay: null, counts: { CORR: 0, PRECO: 0, PREV: 0, EI: 0, TV: 0 } };
+      }
+
+      const loadCard = document.getElementById('loadCard');
+      if (loadCard) loadCard.style.display = 'block';
+      const toggleWorkDay = document.getElementById('toggleWorkDay');
+      if (toggleWorkDay) toggleWorkDay.style.display = 'block';
+
+      // Label de la fecha del día seleccionado
+      const [y, m, d] = selectedDay.split('-').map(Number);
+      const loadLabel = document.getElementById('loadLabel');
+      if (loadLabel) loadLabel.textContent = `Carga — ${d}/${m}/${y}`;
+
+      for (const type of Object.keys(TASK_VALUES)) {
+        const entry = data[selectedDay];
+        const count = (entry && entry.counts) ? entry.counts[type] : 0;
+        const val = TASK_VALUES[type];
+
+        const row = document.createElement('div');
+        row.className = 'load-row';
+        row.innerHTML = `
+          <button class="task-btn task-btn--minus" data-type="${type}" dir="-1" aria-label="Restar ${TASK_LABELS[type]}">−</button>
+          <div class="task-info">
+            <span class="task-name">${TASK_LABELS[type]}</span>
+            <span class="task-value">(×${fmt(val)})</span>
+          </div>
+          <div class="task-counter">${count}</div>
+          <button class="task-btn task-btn--plus" data-type="${type}" dir="+1" aria-label="Sumar ${TASK_LABELS[type]}">+</button>
+        `;
+
+        // Colorear los botones según tipo
+        const color = TASK_COLORS[type];
+        row.style.setProperty('--task-color', color);
+        grid.appendChild(row);
+      }
+
+      // Botón toggle laboral (visible solo si el día es sa/do o fue desmarcado manualmente)
+      updateWorkToggle();
+
+      // Listeners de los botones +/− se adjuntan en renderLoadButtons()
+      attachLoadListeners();
+
+      // Actualizar total del día
+      const dayTotalValue = document.getElementById('dayTotalValue');
+      if (dayTotalValue) dayTotalValue.textContent = fmt(dayPoints(data[selectedDay] || { counts: {} }));
+    }
+
+    /* =========================================================
+       RENDERIZADO — DETALLE POR TIPO (barra horizontal)
+       ========================================================= */
+
+    function renderDetail() {
+      const detailCard = document.getElementById('detailCard');
+      if (!detailCard) return;
+      if (!selectedDay) { detailCard.style.display = 'none'; return; }
+      
+      const entry = data[selectedDay];
+      if (!entry || !entry.counts) { detailCard.style.display = 'none'; return; }
+
+      // Asegurar que counts tenga todos los tipos
+      if (!entry.counts.CORR && !entry.counts.PRECO && !entry.counts.PREV &&
+          entry.counts.EI === undefined && !entry.counts.TV) {
+        entry.counts = { CORR: 0, PRECO: 0, PREV: 0, EI: 0, TV: 0 };
+      }
+
+      // Solo mostrar si hay alguna carga o es laboral
+      const hasCount = Object.values(entry.counts).some(v => v > 0);
+      const [y,m,d] = selectedDay.split('-').map(Number);
+      const detailLabel = document.getElementById('detailLabel');
+      if (detailLabel) detailLabel.textContent = `Detalle — ${d}/${m}/${y}`;
+
+      const table = document.getElementById('detailTable');
+      table.innerHTML = '';
+
+      for (const type of Object.keys(TASK_VALUES)) {
+        const count = entry.counts[type] || 0;
+        const color = TASK_COLORS[type];
+        // Barra relativa al máximo posible en este día (12 × valor) → normalizar a max
+        const maxPossible = 12 * TASK_VALUES[type];
+        const pct = maxPossible > 0 ? Math.min((count * TASK_VALUES[type]) / maxPossible * 100, 100) : 0;
+
+        const row = document.createElement('div');
+        if (pct === 0 && count === 0) continue; // Ocultar tipos sin carga
+
+        row.innerHTML = `
+          <span class="detail-label">${type}</span>
+          <span class="detail-bar"><span class="detail-bar__fill" style="width:${pct}%;background:${color};"></span></span>
+          <span class="detail-value" style="color:${color};">${count} = ${fmt(count * TASK_VALUES[type])} pts</span>
+        `;
+        table.appendChild(row);
+      }
+
+      // Si no hay carga en ningún tipo, mostrar "Sin carga"
+      if (!table.hasChildNodes()) {
+        table.innerHTML = '<span style="font-size:.82rem;color:var(--text-sec);">Sin carga para este día</span>';
+      }
+
+      // Mostrar card de detalle
+      const detailCardFinal = document.getElementById('detailCard');
+      if (detailCardFinal) detailCardFinal.style.display = 'block';
+    }
+
+    /* =========================================================
+       RENDERIZADO — RESUMEN DEL MES
+       ========================================================= */
+
+    function renderSummary() {
+      const s = monthSummary();
+
+      // Actualizar labels del mes
+      const monthLabel = document.getElementById('monthLabel');
+      if (monthLabel) monthLabel.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`;
+
+      // Promedio — mostrar nota cuando se completa el mes
+      if (s.allWorkDaysLoaded && s.workDays > 0) {
+        const avgDisplay = document.getElementById('avgDisplay');
+        if (avgDisplay) avgDisplay.textContent = fmt(s.avg);
+        // Subtítulo "Promedio Final" debajo del número
+        let finalNote = document.getElementById('finalAverage');
+        if (!finalNote) {
+          finalNote = document.createElement('div');
+          finalNote.id = 'finalAverage';
+          finalNote.style.cssText = 'font-size:.78rem;color:rgba(255,255,255,.6);margin-top:.3rem;font-weight:500;';
+          const avgEl = document.getElementById('avgDisplay');
+          if (avgEl) avgEl.after(finalNote);
+        }
+        finalNote.textContent = `● Promedio Final (${s.loadedDays} de ${s.workDays} días cargados)`;
+      } else {
+        // Eliminar nota si desaparecimos la condición
+        const existingFinal = document.getElementById('finalAverage');
+        if (existingFinal) existingFinal.remove();
+
+        const avgDisplay = document.getElementById('avgDisplay');
+        if (avgDisplay) avgDisplay.textContent = fmt(s.avg);
+      }
+
+      // Total acumulado
+      const totalDisplay = document.getElementById('totalDisplay');
+      if (totalDisplay) totalDisplay.textContent = fmt(s.total);
+
+      // Días laborales y cargados
+      const workDaysDisplay = document.getElementById('workDaysDisplay');
+      if (workDaysDisplay) workDaysDisplay.textContent = s.loadedDays > 0 && !s.allWorkDaysLoaded
+        ? `${s.loadedDays} de ${s.workDays}`
+        : s.workDays;
+
+      // Meta: promedio 7 pts/día
+      const targetTotal = REFERENCE_POINTS * s.workDays;     // ej: 7 × 23 = 161
+      const gap = targetTotal - s.total;                     // positivo=faltan al cierre, negativo=ya superaste toda la meta del mes
+
+      const advContainer = document.getElementById('advantageContainer');
+      if (s.workDays === 0) {
+        advContainer.innerHTML = '';
+        return;
+      }
+
+      // --- CASO A: ya completaste el MES completo ---
+      if (s.allWorkDaysLoaded) {
+        if (gap < -0.01) {
+          advContainer.innerHTML = `<span class="advantage-badge up" id="advBadge">
+            ▲ Meta superada ✓ — Promedio final del mes: ${fmt(s.avg)}
+          </span>`;
+        } else if (gap < 0.01) {
+          advContainer.innerHTML = `<span class="advantage-badge neutral" id="advBadge">
+            ● Meta de ${REFERENCE_POINTS} pts/día alcanzada — Promedio final: ${fmt(s.avg)}
+          </span>`;
+        } else {
+          // Cargaste todo pero no llegaste al 7
+          advContainer.innerHTML = `<span class="advantage-badge down" id="advBadge">
+            ▼ Faltaron ${fmt(gap)} punto${gap >= 1 ? 's' : ''} para el promedio 7 — Promedio final: ${fmt(s.avg)}
+          </span>`;
+        }
+      }
+
+      // --- CASO B: no completaste el mes aún ---
+      else if (s.loadedDays === 0 || s.avg === 0) {
+        advContainer.innerHTML = `<span class="advantage-badge down" id="advBadge">
+          ▼ Aún no cargaste ningún día — faltan ${fmt(targetTotal)} puntos para cerrar con promedio 7
+        </span>`;
+      } else if (s.avg >= REFERENCE_POINTS) {
+        // Tu promedio actual ya alcanzó o superó el 7
+        const ptsOver = s.total - (REFERENCE_POINTS * s.loadedDays); // cuánto pasaste de 7 en los cargados
+        if (ptsOver >= -0.01 && ptsOver < 0.01) {
+          advContainer.innerHTML = `<span class="advantage-badge neutral" id="advBadge">
+            ● Meta del ${REFERENCE_POINTS} alcanzada con lo cargado — Promedio: ${s.avg.toFixed(2)}
+          </span>`;
+        } else if (ptsOver >= 0.01) {
+          advContainer.innerHTML = `<span class="advantage-badge up" id="advBadge">
+            ▲ Promedio ${s.avg.toFixed(2)} — pasaste la meta de ${(REFERENCE_POINTS * s.loadedDays).toFixed(2)} puntos con lo cargado
+          </span>`;
+        } else {
+          // avg >= 7 pero ptsOver < 0 es raro (rounding), mostramos igual
+          advContainer.innerHTML = `<span class="advantage-badge up" id="advBadge">
+            ▲ Promedio ${s.avg.toFixed(2)} — alcanzaste la meta de ${REFERENCE_POINTS} puntos/día con lo cargado
+          </span>`;
+        }
+      } else {
+        // avg < 7 y faltan días por cargar → ¿cuántos puntos hacen falta?
+        const remainingDays = s.workDays - s.loadedDays;    // días que todavía puede tener carga
+        // Puntos necesarios para llegar al promedio 7 del MES completo:
+        // targetTotal = 7 × totalWorkDays. Ya tenés s.total. Faltan: targetTotal - s.total
+        const ptsNeeded = Math.max(gap, 0);                 // positivo=faltan
+        advContainer.innerHTML = `<span class="advantage-badge down" id="advBadge">
+          ▼ Faltan ${fmt(ptsNeeded)} punto${ptsNeeded >= 1 ? 's' : ''} para cerrar el mes con promedio 7 — te quedan ${remainingDays} día${remainingDays > 1 ? 's' : ''} por cargar
+        </span>`;
+      }
+
+      // Animación al actualizar
+      const badge = document.getElementById('advBadge');      if (badge) {
+        badge.classList.remove('pulse');
+        void badge.offsetWidth; // force reflow
+        badge.classList.add('pulse');
+      }
+    }
+
+    /* =========================================================
+       TOGGLE DÍA LABORAL
+       ========================================================= */
+
+    function updateWorkToggle() {
+      if (!selectedDay) return;
+      const [y,m,d] = selectedDay.split('-').map(Number);
+      const dow = new Date(y, m - 1, d).getDay(); // JS: Do=0,Sa=1,Do=0…Mo=1
+      const isoDow = dow === 0 ? 7 : dow;
+
+      const entry = data[selectedDay];
+      let isWorkDay;
+      if (entry && (entry.workDay !== null || entry.workDay !== undefined)) {
+        isWorkDay = !!entry.workDay;
+      } else {
+        isWorkDay = DEFAULT_WORK_DAYS.includes(isoDow);
+      }
+
+      const isWeekend = isoDow >= 6;
+
+      const toggleIcon = document.getElementById('toggleIcon');
+      const toggleText = document.getElementById('toggleText');
+      const toggleWorkDay = document.getElementById('toggleWorkDay');
+
+      if (isWeekend && !isWorkDay) {
+        // Sábados/domingos por defecto no laborales — toggle habilitado para marcarlos
+        if (toggleIcon) toggleIcon.textContent = '⬜';
+        if (toggleText) toggleText.textContent = 'Marcar como laboral';
+        if (toggleWorkDay) toggleWorkDay.classList.remove('active');
+      } else if (isWeekend && isWorkDay) {
+        if (toggleIcon) toggleIcon.textContent = '✅';
+        if (toggleText) toggleText.textContent = 'Día laboral';
+        if (toggleWorkDay) toggleWorkDay.classList.add('active');
+      } else {
+        // Lu-Vi: por defecto laborables, pueden desmarcar
+        if (toggleIcon) toggleIcon.textContent = isWorkDay ? '✅' : '⬜';
+        if (toggleText) toggleText.textContent = isWorkDay ? 'Día laboral' : 'Desmarcar como no laboral';
+        if (toggleWorkDay) {
+          if (isWorkDay) {
+            toggleWorkDay.classList.add('active');
+          } else {
+            toggleWorkDay.classList.remove('active');
+          }
+        }
+      }
+
+      // Si es feriado de facto: no mostrar opción de desmarcar (se muestra igual, el usuario decide)
+    }
+
+    function toggleWorkDay(dateStr = null, preventRenderAll = false) {
+      const key = dateStr || selectedDay;
+      if (!key) return;
+
+      const entry = data[key] || { workDay: null, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+
+      // Si no existe la entrada aún, crearla (sin carga por default salvo que sea sa/do)
+      if (!data[key]) {
+        data[key] = { workDay: null, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+      }
+
+      // Alternar el flag de laboral (null = usar default)
+      const isoDow = new Date(key.split('-')[0], key.split('-')[1] - 1, key.split('-')[2]).getDay();
+      const isoDowNorm = isoDow === 0 ? 7 : isoDow;
+
+      if (entry.workDay === null || entry.workDay === undefined) {
+        // Toggle: si es default workday → desmarcar, si no → marcar
+        const isDefaultWork = DEFAULT_WORK_DAYS.includes(isoDowNorm);
+        data[key].workDay = !isDefaultWork;
+      } else {
+        // Ya fue marcado manualmente → volver a default (null)
+        data[key].workDay = null;
+      }
+
+      saveData();
+      renderAll();
+    }
+
+    /* =========================================================
+       RENDERIZADO DE BOTONES +/− con listeners
+       ========================================================= */
+
+    function attachLoadListeners() {
+      $$('.task-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const type = btn.dataset.type;
+          // Usar constante explícita en lugar de parseInt(btn.dir, 10)
+          // porque btn.dir no funciona bien en <button> para valores "+1"/"-1"
+          const delta = (btn.classList.contains('task-btn--plus')) ? +1 : -1;
+          adjustCount(type, delta);
+        });
+      });
+
+      const toggleWorkDay = document.getElementById('toggleWorkDay');
+      if (toggleWorkDay) {
+        toggleWorkDay.addEventListener('click', (e) => {
+          e.preventDefault();
+          toggleWorkDay();
+        });
+      }
+    }
+
+    /* =========================================================
+       AJUSTAR CONTADOR DE TIPO DE TAREA
+       ========================================================= */
+
+    function adjustCount(type, delta) {
+      if (!selectedDay) return;
+
+      // Crear entrada si no existe
+      if (!data[selectedDay]) {
+        data[selectedDay] = { workDay: null, counts: { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 } };
+      }
+
+      const entry = data[selectedDay];
+      if (!entry.counts) {
+        entry.counts = { CORR:0, PRECO:0, PREV:0, EI:0, TV:0 };
+      }
+      if (entry.counts[type] === undefined) {
+        entry.counts[type] = 0;
+      }
+
+      const newCount = entry.counts[type] + delta;
+      if (newCount < 0) return;
+
+      entry.counts[type] = newCount;
+      saveData();
+
+      // Actualizar solo el counter en pantalla (sin re-render completo del loadGrid)
+      renderLoadGrid();
+      renderDetail();
+      const dayTotalEl = document.getElementById('dayTotalValue');
+      if (dayTotalEl) dayTotalEl.textContent = fmt(dayPoints(entry));
+      // Recalcular métricas mensuales
+      requestAnimationFrame(() => renderSummary());
+    }
+
+    /* =========================================================
+       RENDERIZADO GENERAL (orquesta todo el resto)
+       ========================================================= */
+
+    function renderAll() {
+      renderCalendar();
+      renderSummary();
+      renderLoadGrid();
+      renderDetail();
+      updateWorkToggle();
+    }
+
+    /* =========================================================
+       INICIALIZACIÓN
+       ========================================================= */
+
+    function init() {
+      try {
+        // Cargar datos guardados (si localStorage está bloqueado, se saltea)
+        loadData();
+
+        // Mes actual (el que se muestra en el calendario por defecto)
+        const now = new Date();
+        currentYear = now.getFullYear();
+        currentMonth = now.getMonth(); // 0-based
+
+        // Si hay un día seleccionado, mantenerlo; si no, seleccionar hoy del mes actual
+        if (!selectedDay) {
+          selectedDay = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        }
+
+        // Navegación de meses
+        const prevBtn = document.getElementById('prevMonth');
+        const nextBtn = document.getElementById('nextMonth');
+        if (prevBtn) {
+          prevBtn.addEventListener('click', () => {
+            currentMonth--;
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderCalendar();
+          });
+        }
+        if (nextBtn) {
+          nextBtn.addEventListener('click', () => {
+            currentMonth++;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            renderCalendar();
+          });
+        }
+
+        // Exportar
+        const exportBtn = document.getElementById('btnExport');
+        if (exportBtn) exportBtn.addEventListener('click', exportJSON);
+
+        // Importar
+        const importFileInput = document.getElementById('fileImport');
+        if (importFileInput) {
+          importFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try { importJSON(file); } catch(_) {}
+            file.value = ''; // Reset para poder elegir el mismo archivo de nuevo
+          });
+        }
+
+        renderAll();
+      } catch(err) {
+        console.error('Error crítico:', err);
+        const app = document.getElementById('app');
+        if (app) {
+          const errDiv = document.createElement('div');
+          errDiv.style.cssText = 'padding:1.5rem;background:#fef2f2;color:#dc2626;border-radius:14px;margin:1rem 0;font-family:sans-serif;';
+          errDiv.innerHTML = '<b>Error:</b> Algo falló al cargar la app.<br><br>' +
+            'Si abrís el archivo directamente en el celular (file://), muchos navegadores bloquean localStorage y JavaScript.<br><br>' +
+            '<b>Si querés que funcione:</b><br>' +
+            '1. Subí este index.html a cualquier hosting gratuito (GitHub Pages, Netlify Drop), o<br>' +
+            '2. Levantá un servidor local en tu PC con: <code>python3 -m http.server 8080</code><br>' +
+            '&nbsp;&nbsp; y abrís en el celu: <code>http://<i>tu-ip</i>:8080</code>';
+          app.appendChild(errDiv);
+        }
+      }
+    }
+
+    // Arrancar la app
+    document.addEventListener('DOMContentLoaded', init);
+
+  })();
+  </script>
+</body>
+</html>
