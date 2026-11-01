@@ -908,78 +908,136 @@
 
     function toggleAuthMode() { setAuthMode(!isSignInMode()); }
 
-    async function handleAuth(e) {
+async function handleAuth(e) {
       e.preventDefault();
-      const email    = get('authEmail').value.trim();
+      const email    = get('authEmail').value.trim().toLowerCase();
       const password = get('authPassword').value;
       const errorEl  = get('authError');
       const btn      = get('authSubmitBtn');
-      if (!email || !password) { errorEl.textContent = 'Completa ambos campos.'; return; }
-
-      btn.disabled     = true;
-      btn.textContent  = 'Por favor…';
-      errorEl.textContent = 'Conectando…';
+      if (!email || !password) { errorEl.textContent = 'Agregá tu email y contraseña.'; return; }
 
       let result;
-      if (isSignInMode()) {
-        result = await supabase.auth.signInWithPassword({ email, password });
-      } else {
-        result = await supabase.auth.signUp({ email, password }, {
-          redirectTo: 'https://tracker.pato-skocir.workers.dev'
-        });
-        get('authEmail').value    = '';
-        get('authPassword').value = '';  // limpiar después del signup
-      }
+      btn.disabled     = true;
+      btn.textContent  = 'Conectando…';
+      errorEl.textContent    = '';
 
-      btn.disabled     = false;
-      btn.textContent  = isSignInMode() ? 'Ingresar' : 'Registrarse';
+      try {
+        if (isSignInMode()) {
+          // ── INICIAR SESIÓN ──────────────────────────────
+          result = await supabase.auth.signInWithPassword({ email, password });
+          btn.disabled     = false;
+          btn.textContent  = 'Ingresar';
 
-      if (result.error) {
-        const msg = result.error.message.toLowerCase();
-        // Si ya existe, el usuario puede intentar iniciar sesión en vez de registrarse
-        if (!isSignInMode() && msg.includes('already')) {
-          errorEl.textContent = 'Ya hay una cuenta con ese email. Probá "Iniciar sesión".';
-          setAuthMode(true);                             // volver a login
-        } else {
-          errorEl.textContent = result.error.message;
-        }
-      } else {
-        if (!isSignInMode()) {
-          // Signup: ¿requiere confirmación? (identities.length === 0 → sí)
-          const identities = result.data?.user?.identities;
-          if (Array.isArray(identities) && identities.length === 0) {
-            get('authEmail').value    = email;          // recordar email usado
-            setAuthMode(true);                             // volver a login
-            return;                                      // salir, esperar confirmación
-          }
-        }
-        // Login exitoso (o signup sin confirmación): verificar sesión activa
-        const { data: { session: newSession }, error: sessErr } = await supabase.auth.getSession();
-        if (!sessErr && newSession) {
-          currentUser = newSession.user;
-          session = newSession;
-          hideAuth();
-          loadData().then(renderAll);
-        } else {
-          // Si es signup, no hay sesión inmediata → OK si no requiere confirmación
-          if (!isSignInMode() && result.data?.user) {
-            get('authEmail').value    = email;          // recordar email usado
-            setAuthMode(true);                             // volver a login
-            errorEl.textContent = 'Revisá tu email para confirmar la cuenta.';
+          if (result.error) {
+            const msg = result.error.message.toLowerCase();
+            errorEl.textContent    = msg.includes('invalid') || msg.includes('not found') || msg.includes('wrong') || msg.includes('incorrect')
+              ? 'Clave incorrecta o email no encontrado.'
+              : 'Error: ' + result.error.message;
+          } else if (result.data?.session) {
+            // signInWithPassword devuelve session directamente
+            currentUser = result.data.session.user;
+            session     = result.data.session;
+            hideAuth();
+            loadData().then(renderAll);
+          } else if (result.data?.user && !result.data.session) {
+            // A veces solo trae user sin session (email confirm pendiente). Try getSession.
+            const sessRes = await supabase.auth.getSession();
+            if (sessRes.data?.session && !sessRes.error) {
+              currentUser = sessRes.data.session.user;
+              session     = sessRes.data.session;
+              hideAuth();
+              loadData().then(renderAll);
+            } else {
+              errorEl.textContent    = 'Tu email necesita confirmación. Revisá tu bandeja.';
+            }
           } else {
-            errorEl.textContent = 'Error al verificar sesión. Intentá de nuevo.';
+            errorEl.textContent    = 'Error al iniciar sesión. Intenta de nuevo.';
           }
+
+        } else {
+          // ── REGISTRO ────────────────────────────────────
+          // 1) Verificar si ya existe en la tabla users (tabla personalizada para validar registro)
+          const { data: existing, error: checkErr } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', email)
+            .maybeSingle();
+
+          if (checkErr) {
+            // Tabla no existe o query falla → continuar con signup normal de Supabase
+            console.warn('No se pudo verificar existencia del usuario:', checkErr);
+          } else if (existing?.id) {
+            btn.disabled     = false;
+            btn.textContent  = 'Registrarse';
+            errorEl.textContent    = 'Ya estás registrado. Pasá a iniciar sesión.';
+            setAuthMode(true);      // volver a login
+            return;                 // salir, usuario ve mensaje y hace click "Ingresar"
+          }
+
+          // 2) Crear cuenta con Supabase Auth
+          result = await supabase.auth.signUp({ email, password }, {
+            redirectTo: 'https://tracker-b4c.pages.dev/callback'
+          });
+          get('authEmail').value    = '';
+          get('authPassword').value = '';
+
+          btn.disabled     = false;
+          btn.textContent  = 'Registrarse';
+
+          if (result.error) {
+            errorEl.textContent    = result.error.message;
+            // Si el error dice "already registered", cambiar a login
+            if (result.error.message.toLowerCase().includes('already')) {
+              setTimeout(function() { setAuthMode(true); }, 2000);
+            }
+          } else if (result.data?.user) {
+            // Verificar si requiere confirmacion de email
+            const identities = result.data.user.identities;
+            if (!Array.isArray(identities) || identities.length === 0) {
+              // REQUIERE confirmación: no hay session inmediata
+              get('authEmail').value    = email;        // recordar email para mensaje
+              setAuthMode(true);                            // volver a login
+              errorEl.textContent    = 'Se envió un link de verificación. Revisá tu bandeja.';
+            } else {
+              // Ya confirmado: verificar session directa
+              const sessRes = await supabase.auth.getSession();
+              if (sessRes.data?.session && !sessRes.error) {
+                currentUser = sessRes.data.session.user;
+                session     = sessRes.data.session;
+                hideAuth();
+                loadData().then(renderAll);
+              } else {
+                errorEl.textContent    = 'Error al verificar sesión. Intenta de nuevo.';
+              }
+            }
+          } else {
+            errorEl.textContent    = 'Error inesperado al registrar. Intentá de nuevo.';
+          }
+        }
+      } catch (err) {
+        // Network error + any async error
+        console.error('handleAuth error:', err);
+        btn.disabled     = false;
+        btn.textContent  = isSignInMode() ? 'Ingresar' : 'Registrarse';
+        if (typeof err.message === 'string') {
+          errorEl.textContent    = (err.message.includes('NetworkError') ||
+                                     err.message.includes('Failed to fetch'))
+            ? 'Sin conexión. Verificá tu internet.'
+            : err.message;
+        } else {
+          errorEl.textContent    = 'No se pudo conectar con el servidor.';
         }
       }
     }
 
     async function handleLogout() {
-      await supabase.auth.signOut();
-      currentUser = null; session = null;
-      // Forzar mostrar el overlay de login (onAuthStateChange puede no dispararse)
-      showAuth();
+      // Deshabilitar logout button para evitar double-clicks mientras se procesa
       const btn = document.getElementById('btnLogout');
-      if (btn) btn.style.display = 'none';
+      if (btn) btn.disabled = true;
+
+      await supabase.auth.signOut();
+      // onAuthStateChange en init() dispara SIGNED_OUT → limpia currentUser/session y muestra auth.
+      showAuth();  // Show auth immediately for UX feedback; handler will finalize.
     }
 
     /* =========================================================
@@ -1123,38 +1181,29 @@
       if (!selectedDay || !session || !data[selectedDay] || !currentUser) return;
 
       const entry = data[selectedDay];
-      // Siempre enviar TODAS las conteos (incluso ceros) para que bajar a 0 persista
-      const payload = {
+
+      // Upsert directo → evita el problema de RLS que bloquea el SELECT previo
+      const payload = [{
         user_id: currentUser.id,
-        day: selectedDay,                // YYYY-MM-DD
+        day: selectedDay,
         work_day: typeof entry.workDay === 'boolean' ? entry.workDay : null,
         corr: Number(entry.counts.CORR)  || 0,
         preco: Number(entry.counts.PRECO) || 0,
         prev: Number(entry.counts.PREV)  || 0,
         ei:   Number(entry.counts.EI)    || 0,
         tv:   Number(entry.counts.TV)    || 0
-      };
-
-      // Buscar si ya existe un registro para este usuario+day
-      const { data: existing } = await supabase
-        .from('tasks')
-        .select('id')
-        .eq('user_id', currentUser.id)
-        .eq('day', selectedDay)
-        .maybeSingle();
+      }];
 
       let result;
-      if (existing && existing.id) {
-        // Actualizar registro existente
+      try {
+        // .upsert() con onConflict es la forma correcta en esta versión CDN
         result = await supabase
           .from('tasks')
-          .update(payload)
-          .eq('id', existing.id);
-      } else {
-        // Insertar nuevo
-        result = await supabase
-          .from('tasks')
-          .insert(payload);
+          .upsert(payload, {
+            onConflict: ['user_id','day']
+          });
+      } catch (e) {
+        console.error('Upsert error:', e);
       }
 
       if (result.error) {
@@ -1711,7 +1760,11 @@
         }
 
         // ── Chequear sesión ──
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        if (initialSession) {
+            currentUser = initialSession.user;
+            session     = initialSession;
+        }
 
         // 1) Registrar SIEMPRE listeners (independientemente de si hay sesión)
         const authForm = document.getElementById('authForm');
