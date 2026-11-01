@@ -797,18 +797,21 @@
       // selectedDay es YYYY-MM-DD; guardar day como ISO para consistencia.
       if (!selectedDay || !data[selectedDay]) return;
 
+      const entry = data[selectedDay];
+      const counts = entry.counts || {};
+      // Siempre enviar TODOS los campos; merge-upsert de Supabase puede
+      // no aplicar column DEFAULTs para nuevas filas.
       const payload = {
-        day: selectedDay, // ya es YYYY-MM-DD (interno)
-        work_day: data[selectedDay].workDay !== undefined ? !!data[selectedDay].workDay : false,
-        corr:  (data[selectedDay].counts.CORR  || 0),
-        preco: (data[selectedDay].counts.PRECO || 0),
-        prev:  (data[selectedDay].counts.PREV  || 0),
-        ei:    (data[selectedDay].counts.EI    || 0),
-        tv:    (data[selectedDay].counts.TV    || 0)
+        day:   selectedDay,
+        work_day: (typeof entry.workDay === 'boolean') ? !!entry.workDay : null,
+        corr:  Math.max(counts.CORR  || 0, 0),
+        preco: Math.max(counts.PRECO || 0, 0),
+        prev:  Math.max(counts.PREV  || 0, 0),
+        ei:    Math.max(counts.EI    || 0, 0),
+        tv:    Math.max(counts.TV    || 0, 0)
       };
 
       try {
-        // POST con Upsert → inserta si no existe, actualiza si ya existe
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: {
@@ -816,22 +819,21 @@
             'On-Conflict': 'day',
             'Prefer': 'resolution=merge-upsert'
           },
-          body: JSON.stringify(payload) // objeto plano, no array
+          body: JSON.stringify(payload)
         });
-        if (!res.ok && res.status !== 201) {
+        if (!res.ok && res.status !== 201 && res.status !== 204) {
           console.warn('Supabase upsert falló:', res.status, res.statusText);
+        } else {
+          console.log('✓ guardado', selectedDay, payload);
         }
       } catch (err) {
-        console.warn('Supabase save falló:', err);
+        console.error('Supabase save err:', err);
       }
 
-      // Fallback sessionStorage
+      // Fallback sessionStorage — guardar siempre todo en memoria
       try {
         const stored = JSON.parse(sessionStorage.getItem('rendimiento_mensual_tmp') || '{}');
-        stored[selectedDay] = {
-          workDay: data[selectedDay].workDay,
-          counts: data[selectedDay].counts
-        };
+        stored[selectedDay] = { workDay: entry.workDay, counts: { ...counts } };
         sessionStorage.setItem('rendimiento_mensual_tmp', JSON.stringify(stored));
       } catch (_) {}
     }
