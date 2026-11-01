@@ -924,7 +924,9 @@
       if (isSignInMode()) {
         result = await supabase.auth.signInWithPassword({ email, password });
       } else {
-        result = await supabase.auth.signUp({ email, password });
+        result = await supabase.auth.signUp({ email, password }, {
+          redirectTo: 'https://tracker.pato-skocir.workers.dev'
+        });
         get('authEmail').value    = '';
         get('authPassword').value = '';  // limpiar después del signup
       }
