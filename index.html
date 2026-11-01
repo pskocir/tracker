@@ -1682,6 +1682,10 @@
         const authForm = document.getElementById('authForm');
         if (authForm) authForm.addEventListener('submit', handleAuth);
 
+        // Link toggle login/registro
+        const authSwitch = document.getElementById('authSwitchText');
+        if (authSwitch) authSwitch.addEventListener('click', toggleAuthMode);
+
         // Botón logout (siempre registro, incluso si estamos logueados o no)
         const btnLogout = document.getElementById('btnLogout');
         if (btnLogout) btnLogout.addEventListener('click', handleLogout);
