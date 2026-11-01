@@ -627,12 +627,44 @@
     // Referencia de meta
     const REFERENCE_POINTS = 7;
 
-    // Claves para localStorage
+    // Claves para localStorage (fallback)
     const STORAGE_KEY = 'rendimiento_mensual_data';
 
     /* =========================================================
-       UTILIDADES DE FECHA (sin librerías externas)
+       CONFIGURACIÓN DE SUPABASE
        ========================================================= */
+
+    const SUPABASE_URL     = 'https://eohagescjwjtudanasvp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvaGFnZXNjandqdHVkYW5hc3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NzkwNDksImV4cCI6MjEwOTA1NTA0OX0.ie4gf_KRJJuhi3t9Uxd58TrOEnP-6k5dqR8RzfVXjzc';
+    const API_BASE         = `${SUPABASE_URL}/rest/v1/tasks`;
+
+    /* =========================================================
+       UTILIDADES DE FECHA (sin librerías externas)
+       internamente usamos YYYY-MM-DD para compatibilidad con URL/Date.
+       al mostrar en la UI: DD-MM-YYYY.
+       ========================================================= */
+
+    /** Crea clave interna: YYYY-MM-DD */
+    function buildKey(y, m, d) {
+      return `${String(y).padStart(4,'0')}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    /** Convierte clave interna YYYY-MM-DD → DD-MM-YYYY */
+    function keyToDisplay(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      return `${String(d).padStart(2,'0')}-${String(m).padStart(2,'0')}-${y}`;
+    }
+
+    /** Convierte clave externa DD-MM-YYYY → YYYY-MM-DD (interna) */
+    function displayToKey(key) {
+      const [d, m, y] = key.split('-').map(Number);
+      return `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    /** Devuelve el mes actual como "MM" */
+    function currentMonthNum() {
+      return String(currentMonth + 1).padStart(2, '0');
+    }
 
     /** Formatea un número con coma decimal y 2 decimales (formato argentino) */
     function fmt(n) {
@@ -666,22 +698,73 @@
 
     let currentYear, currentMonth; // mes visible en el calendario
     let selectedDay = null;         // día seleccionado para carga (null = ninguno)
+    let dbReady = false;            // true cuando los datos ya se cargaron de la BD
 
     /** E structura de datos: { 'YYYY-MM-DD': workDayBool | undefined, counts: { CORR: n, ... } } */
     let data = {};
 
     /* =========================================================
-       PERSISTENCIA — localStorage
+       PERSISTENCIA — Supabase + localStorage fallback
        ========================================================= */
 
-    function loadData() {
+    function _headers() {
+      return {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      };
+    }
+
+    async function loadData() {
+      // 1) Cargar datos del mes actual desde Supabase
+      // day en DB es YYYY-MM-DD (ISO); filtrar por año-mes
+      const yyyy = String(currentYear).padStart(4, '0');
+      const mm = String(currentMonth + 1).padStart(2, '0');
+      const url = `${API_BASE}?day.ilike=${yyyy}-${mm}-%`;
+
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) { return; }
-        const parsed = JSON.parse(raw);
-        // Normalizar estructura
+        const res = await fetch(url, { headers: _headers() });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows = await res.json();
+        // Normalizar keys del DB a formato interno YYYY-MM-DD
         data = {};
+        for (const row of rows) {
+          const dayKey = row.day; // ya es YYYY-MM-DD
+          if (!dayKey.startsWith(yyyy)) continue;
+          data[dayKey] = {
+            workDay: row.work_day !== undefined ? row.work_day : null,
+            counts: {
+              CORR:  row.corr ?? 0,
+              PRECO: row.preco ?? 0,
+              PREV:  row.prev ?? 0,
+              EI:    row.ei ?? 0,
+              TV:    row.tv ?? 0
+            }
+          };
+        }
+        dbReady = true;
+      } catch (err) {
+        console.warn('Supabase load falló (usando fallback):', err);
+
+        // 2) Fallback a localStorage
+        await loadLocalFallback();
+      }
+
+      // 3) Limpiar datos de otros meses que quedaron en memoria
+      cleanupOtherMonths();
+    }
+
+    async function loadLocalFallback() {
+      try {
+        const raw = sessionStorage.getItem('rendimiento_mensual_tmp');
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        // Solo fusionar datos del mes actual
         for (const [key, val] of Object.entries(parsed)) {
+          const parts = key.split('-').map(Number);
+          const yy = String(parts[0]);
+          const mm2 = String(parts[1]).padStart(2,'0');
+          if (String(currentYear) === yy && currentMonthNum() === `-${mm2}-`) continue; // no filtrar correctamente
           data[key] = {
             workDay: val.workDay !== undefined ? val.workDay : null,
             counts: {
@@ -693,13 +776,63 @@
             }
           };
         }
-      } catch (_) {
-        data = {};
+      } catch (_) { /* silencioso */ }
+    }
+
+    function cleanupOtherMonths() {
+      // Eliminar datos de otros meses
+      for (const key of Object.keys(data)) {
+        const parts = key.split('-');
+        if (parts[0] !== String(currentYear)) {
+          delete data[key];
+        } else if (String(currentMonth + 1).padStart(2, '0') !== parts[1]) {
+          delete data[key];
+        }
       }
     }
 
-    function saveData() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(_) {}
+    async function saveData() {
+      // Guardar el día seleccionado en Supabase.
+      // selectedDay es YYYY-MM-DD; guardar day como ISO para consistencia.
+      if (!selectedDay || !data[selectedDay]) return;
+
+      const payload = {
+        day: selectedDay, // ya es YYYY-MM-DD (interno)
+        work_day: data[selectedDay].workDay !== undefined ? !!data[selectedDay].workDay : false,
+        corr:  (data[selectedDay].counts.CORR  || 0),
+        preco: (data[selectedDay].counts.PRECO || 0),
+        prev:  (data[selectedDay].counts.PREV  || 0),
+        ei:    (data[selectedDay].counts.EI    || 0),
+        tv:    (data[selectedDay].counts.TV    || 0)
+      };
+
+      try {
+        // POST con Upsert → inserta si no existe, actualiza si ya existe
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: {
+            ..._headers(),
+            'On-Conflict': 'day',
+            'Prefer': 'resolution=merge-upsert'
+          },
+          body: JSON.stringify(payload) // objeto plano, no array
+        });
+        if (!res.ok && res.status !== 201) {
+          console.warn('Supabase upsert falló:', res.status, res.statusText);
+        }
+      } catch (err) {
+        console.warn('Supabase save falló:', err);
+      }
+
+      // Fallback sessionStorage
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('rendimiento_mensual_tmp') || '{}');
+        stored[selectedDay] = {
+          workDay: data[selectedDay].workDay,
+          counts: data[selectedDay].counts
+        };
+        sessionStorage.setItem('rendimiento_mensual_tmp', JSON.stringify(stored));
+      } catch (_) {}
     }
 
     /* =========================================================
@@ -825,7 +958,7 @@
         }
 
         const [dNum, dow] = day;
-        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dNum).padStart(2,'0')}`;
+        const dateStr = buildKey(currentYear, currentMonth, dNum);
         cell.dataset.date = dateStr;
         cell.innerHTML = `<span>${dNum}</span><span class="dot"></span>`;
 
@@ -901,10 +1034,10 @@
       const toggleWorkDay = document.getElementById('toggleWorkDay');
       if (toggleWorkDay) toggleWorkDay.style.display = 'block';
 
-      // Label de la fecha del día seleccionado
-      const [y, m, d] = selectedDay.split('-').map(Number);
+      // Label de la fecha del día seleccionado (formato DD-MM-YYYY)
+      const displayDate = keyToDisplay(selectedDay);
       const loadLabel = document.getElementById('loadLabel');
-      if (loadLabel) loadLabel.textContent = `Carga — ${d}/${m}/${y}`;
+      if (loadLabel) loadLabel.textContent = `Carga — ${displayDate}`;
 
       for (const type of Object.keys(TASK_VALUES)) {
         const entry = data[selectedDay];
@@ -957,9 +1090,9 @@
 
       // Solo mostrar si hay alguna carga o es laboral
       const hasCount = Object.values(entry.counts).some(v => v > 0);
-      const [y,m,d] = selectedDay.split('-').map(Number);
+      const displayDetailDate = keyToDisplay(selectedDay);
       const detailLabel = document.getElementById('detailLabel');
-      if (detailLabel) detailLabel.textContent = `Detalle — ${d}/${m}/${y}`;
+      if (detailLabel) detailLabel.textContent = `Detalle — ${displayDetailDate}`;
 
       const table = document.getElementById('detailTable');
       table.innerHTML = '';
@@ -1267,11 +1400,8 @@
        INICIALIZACIÓN
        ========================================================= */
 
-    function init() {
+    async function init() {
       try {
-        // Cargar datos guardados (si localStorage está bloqueado, se saltea)
-        loadData();
-
         // Mes actual (el que se muestra en el calendario por defecto)
         const now = new Date();
         currentYear = now.getFullYear();
@@ -1285,25 +1415,30 @@
         // Delegación de clicks — UNA SOLA VEZ por elemento persistente
         delegateClicks();
 
-        // Navegación de meses
+        // Navegación de meses (recargando datos de Supabase)
         const prevBtn = document.getElementById('prevMonth');
         const nextBtn = document.getElementById('nextMonth');
         if (prevBtn) {
-          prevBtn.addEventListener('click', () => {
+          prevBtn.addEventListener('click', async () => {
             currentMonth--;
             if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-            renderCalendar();
+            await loadData();
+            selectedDay = null;
+            renderAll();
           });
         }
         if (nextBtn) {
-          nextBtn.addEventListener('click', () => {
+          nextBtn.addEventListener('click', async () => {
             currentMonth++;
             if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            renderCalendar();
+            await loadData();
+            selectedDay = null;
+            renderAll();
           });
         }
 
-          renderAll();
+        // Cargar datos del mes actual y renderizar
+        await loadData();
       } catch(err) {
         console.error('Error crítico:', err);
         const app = document.getElementById('app');
