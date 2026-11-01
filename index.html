@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Supabase JS (CDN, versión fija) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.75.0/dist/umd/supabase.js"></script>
+
   <style>
     /* ============================================================
        CSS CUSTOM PROPERTIES — MODO CLARO (default)
@@ -489,6 +492,200 @@
       animation: fadeSlideIn .3s ease both;
     }
 
+    /* ============================================================
+       AUTH — Login / Registro / Logout
+       ============================================================ */
+    #authContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1rem;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 2.5rem 2rem;
+      text-align: center;
+    }
+
+    .auth-card h2 {
+      font-size: 1.3rem;
+      margin-bottom: .3rem;
+      color: var(--accent);
+    }
+
+    .auth-card p.auth-subtitle {
+      font-size: .85rem;
+      color: var(--text-sec);
+      margin-bottom: 2rem;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: .75rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      margin-bottom: .75rem;
+      transition: border-color var(--transition);
+    }
+
+    .auth-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .auth-input::placeholder {
+      color: var(--text-sec);
+      opacity: .6;
+    }
+
+    .auth-submit-btn {
+      width: 100%;
+      padding: .85rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background var(--transition), box-shadow var(--transition);
+      margin-bottom: 1rem;
+    }
+
+    .auth-submit-btn:hover {
+      box-shadow: var(--shadow-md);
+      filter: brightness(1.08);
+    }
+
+    .auth-submit-btn:active {
+      transform: scale(.97);
+    }
+
+    .auth-submit-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .auth-switch-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-family: inherit;
+      font-size: .85rem;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color var(--transition);
+    }
+
+    .auth-switch-btn:hover {
+      color: var(--accent-dark);
+    }
+
+    .auth-error-msg {
+      min-height: 1.3rem;
+      font-size: .82rem;
+      color: var(--red);
+      margin-bottom: .5rem;
+    }
+
+    /* Header con logout */
+    .app-header__content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .header-left h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -.02em;
+      color: var(--text-sec);
+    }
+
+    .btn-user {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .4rem .7rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .btn-user:hover {
+      background: var(--red-bg);
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    /* Toast de notificación */
+    #toastContainer {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: .75rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-size: .85rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all .25s ease;
+      pointer-events: auto;
+      text-align: center;
+      max-width: 90vw;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.toast--error {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* ============================================================
+       LOGOUT OVERLAY
+       ============================================================ */
+    #authOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 9000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
   </style>
 </head>
 
@@ -499,7 +696,12 @@
          HEADER
          ============================================ -->
     <header class="app-header">
-      <h1>Rendimiento Mensual</h1>
+      <div class="app-header__content">
+        <div class="header-left"><h1>Rendimiento Mensual</h1></div>
+        <button class="btn-user" id="btnLogout" style="display:none;">
+          🚪 Salir
+        </button>
+      </div>
     </header>
 
     <!-- ============================================
@@ -581,6 +783,28 @@
 
   </div><!-- /.app -->
 
+  <!-- Notificaciones toast -->
+  <div id="toastContainer"></div>
+
+  <!-- Login / Registro (visible solo sin sesión) -->
+  <div id="authOverlay" style="display:none;">
+    <div class="auth-card">
+      <h2 id="authTitle">Iniciar sesión</h2>
+      <p class="auth-subtitle" id="authSubtitle">¡Bienvenido/a!</p>
+
+      <form id="authForm" autocomplete="on">
+        <input class="auth-input" type="email" id="authEmail" placeholder="Email" autocomplete="email" required>
+        <input class="auth-input" type="password" id="authPassword" placeholder="Contraseña" autocomplete="current-password" minlength="6" required>
+        <div class="auth-error-msg" id="authError"></div>
+        <button class="auth-submit-btn" type="submit" id="authSubmitBtn">Ingresar</button>
+      </form>
+
+      <span class="auth-switch-btn" id="authSwitchText" style="color:var(--text-sec);font-style:italic;">
+        ¿No tenés cuenta? <strong style="color:var(--accent);">Registrarse</strong>
+      </span>
+    </div>
+  </div>
+
   <!-- ============================================================
        JAVASCRIPT — LÓGICA DE LA APLICACIÓN
        ============================================================ -->
@@ -594,11 +818,11 @@
 
     // Valores por tipo de tarea (puntos unitarios)
     const TASK_VALUES = {
-      CORR:  1.00,
+      CORR:  1,
       PRECO: 0.50,
       PREV:  0.65,
       EI:    0.50,
-      TV:    1.00
+      TV:    1
     };
 
     // Descripciones bonitas (leyenda)
@@ -627,21 +851,117 @@
     // Referencia de meta
     const REFERENCE_POINTS = 7;
 
-    // Claves para localStorage (fallback)
-    const STORAGE_KEY = 'rendimiento_mensual_data';
+    // Clave para datos temporales (ya no se usa persistencia)
+    const _TMP_KEY = 'rendimiento_mensual_tmp';
 
     /* =========================================================
        CONFIGURACIÓN DE SUPABASE
        ========================================================= */
 
-    const SUPABASE_URL     = 'https://eohagescjwjtudanasvp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvaGFnZXNjandqdHVkYW5hc3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NzkwNDksImV4cCI6MjEwOTA1NTA0OX0.ie4gf_KRJJuhi3t9Uxd58TrOEnP-6k5dqR8RzfVXjzc';
-    const API_BASE         = `${SUPABASE_URL}/rest/v1/tasks`;
+    const SUPABASE_URL    = 'https://eohagescjwjtudanasvp.supabase.co';
+    const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVvaGFnZXNjandqdHVkYW5hc3ZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM0NzkwNDksImV4cCI6MjEwOTA1NTA0OX0.ie4gf_KRJJuhi3t9Uxd58TrOEnP-6k5dqR8RzfVXjzc';
+
+    // Inicializar cliente
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    let currentUser = null;   // usuario logueado actual (auth.uid)
+    let session     = null;   // sesión activa
 
     /* =========================================================
-       UTILIDADES DE FECHA (sin librerías externas)
-       internamente usamos YYYY-MM-DD para compatibilidad con URL/Date.
-       al mostrar en la UI: DD-MM-YYYY.
+       AUTENTICACIÓN — helpers
+       ========================================================= */
+
+    function showAuth() {
+      const overlay = get('authOverlay');
+      if (overlay) overlay.style.display = 'flex';
+      const appEl = get('app');   if (appEl) appEl.style.display = 'none';
+      const btnLogout = get('btnLogout');  if (btnLogout) btnLogout.style.display = 'none';
+    }
+
+    function hideAuth() {
+      const overlay = get('authOverlay');
+      if (overlay) overlay.style.display = 'none';
+      const appEl = get('app');   if (appEl) appEl.style.display = 'block';
+      const btn = get('btnLogout');  if (btn && currentUser) btn.style.display = 'flex';
+    }
+
+    function isSignInMode() {
+      return get('authTitle').textContent.includes('Iniciar');
+    }
+
+    function setAuthMode(signIn) {
+      const title   = get('authTitle'), sub = get('authSubtitle');
+      const btnText = get('authSubmitBtn'), switchT = get('authSwitchText');
+      if (signIn) {
+        title.textContent     = 'Iniciar sesión';
+        sub.textContent       = '¡Bienvenido/a!';
+        btnText.textContent   = 'Ingresar';
+        switchT.innerHTML    = '¿No tenés cuenta? <strong style="color:var(--accent);">Registrarse</strong>';
+      } else {
+        title.textContent     = 'Crear cuenta';
+        sub.textContent       = '¡Empezá ahora!';
+        btnText.textContent   = 'Registrarse';
+        switchT.innerHTML    = '¿Ya tenés cuenta? <strong style="color:var(--accent);">Iniciar sesión</strong>';
+      }
+      get('authError').textContent = '';
+    }
+
+    function toggleAuthMode() { setAuthMode(!isSignInMode()); }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email    = get('authEmail').value.trim();
+      const password = get('authPassword').value;
+      const errorEl  = get('authError');
+      const btn      = get('authSubmitBtn');
+      if (!email || !password) { errorEl.textContent = 'Completa ambos campos.'; return; }
+
+      btn.disabled     = true;
+      btn.textContent  = 'Por favor…';
+      errorEl.textContent = 'Conectando…';
+
+      let result;
+      if (isSignInMode()) {
+        result = await supabase.auth.signInWithPassword({ email, password });
+      } else {
+        result = await supabase.auth.signUp({ email, password });
+        get('authEmail').value    = '';
+        get('authPassword').value = '';  // limpiar después del signup
+      }
+
+      btn.disabled     = false;
+      btn.textContent  = isSignInMode() ? 'Ingresar' : 'Registrarse';
+
+      if (result.error) {
+        errorEl.textContent = result.error.message;
+      } else if (!isSignInMode() && !result.data.user.identities) {
+        // Signup requiere confirmación por email
+        get('authEmail').value    = email;          // recordar email usado
+        setAuthMode(true);                             // volver a login
+      }
+    }
+
+    async function handleLogout() {
+      await supabase.auth.signOut();
+      currentUser = null; session = null;
+      showAuth();
+    }
+
+    /* =========================================================
+       isWorkDay(dateStr, entry)
+       Single function: true si entry.workDay es boolean true; false si false; sino Lu-Vi default.
+       ========================================================= */
+
+    function isWorkDay(dateStr, entry) {
+      if (entry && typeof entry.workDay === 'boolean') return entry.workDay;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const jsDow = new Date(y, m - 1, d).getDay();   // JS: Do=0,Sa=1…Vi=5
+      const isoDow = jsDow === 0 ? 7 : jsDow;         // ISO: Lu=1 … Do=7
+      return isoDow >= 1 && isoDow <= 5;               // Lu a Vi → true
+    }
+
+    /* =========================================================
+       PERSISTENCIA — Supabase (directo, sin fallback)
        ========================================================= */
 
     /** Crea clave interna: YYYY-MM-DD */
@@ -703,148 +1023,112 @@
     let data = {};
 
     /* =========================================================
-       PERSISTENCIA — Supabase + localStorage fallback
+       PERSISTENCIA — Supabase (directo, sin fallback)
        ========================================================= */
 
-    function _headers() {
-      return {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json'
-      };
+    function showToast(message, isError) {
+      const container = get('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'toast' + (isError ? ' toast--error' : '');
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      // Animar entrada
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          toast.classList.add('show');
+        });
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
     }
 
     async function loadData() {
-      // 1) Cargar datos del mes actual desde Supabase
-      // day en DB es YYYY-MM-DD (ISO); filtrar por año-mes
-      const yyyy = String(currentYear).padStart(4, '0');
-      const mm = String(currentMonth + 1).padStart(2, '0');
-      const url = `${API_BASE}?day.ilike=${yyyy}-${mm}-%`;
+      if (!session) return;
 
-      try {
-        const res = await fetch(url, { headers: _headers() });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rows = await res.json();
-        // Normalizar keys del DB a formato interno YYYY-MM-DD
+      const monthStart = `${String(currentYear).padStart(4,'0')}-${String(currentMonth + 1).padStart(2,'0')}-01`;
+      const nextMonthStart = currentMonth === 11
+        ? `${currentYear + 1}-01-01`
+        : `${String(currentYear).padStart(4,'0')}-${String(currentMonth + 2).padStart(2,'0')}-01`;
+
+      const { data: rows, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .gte('day', monthStart)
+        .lt('day', nextMonthStart);
+
+      if (error) {
+        console.error('Supabase load error:', error);
         data = {};
-        for (const row of rows) {
-          const dayKey = row.day; // ya es YYYY-MM-DD
-          if (!dayKey.startsWith(yyyy)) continue;
-          data[dayKey] = {
-            workDay: row.work_day !== undefined ? row.work_day : null,
-            counts: {
-              CORR:  row.corr ?? 0,
-              PRECO: row.preco ?? 0,
-              PREV:  row.prev ?? 0,
-              EI:    row.ei ?? 0,
-              TV:    row.tv ?? 0
-            }
-          };
-        }
-      } catch (err) {
-        console.warn('Supabase load falló (usando fallback):', err);
-
-        // 2) Fallback a localStorage
-        await loadLocalFallback();
+        return;
       }
 
-      // 3) Limpiar datos de otros meses que quedaron en memoria
-      cleanupOtherMonths();
-    }
-
-    async function loadLocalFallback() {
-      try {
-        const raw = sessionStorage.getItem('rendimiento_mensual_tmp');
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        // Solo fusionar datos del mes actual
-        for (const [key, val] of Object.entries(parsed)) {
-          if (typeof key !== 'string' || key.length !== 10) continue;
-          const parts = key.split('-').map(Number);
-          const yy = String(parts[0]);
-          const mm2 = String(parts[1]).padStart(2, '0');
-          // Solo incluir si coincide con el mes actual
-          if (String(currentYear) === yy &&
-              String(currentMonth + 1).padStart(2, '0') === mm2) {
-            data[key] = {
-              workDay: val.workDay !== undefined ? val.workDay : null,
-              counts: {
-                CORR:  (val.counts && val.counts.CORR)  || 0,
-                PRECO: (val.counts && val.counts.PRECO) || 0,
-                PREV:  (val.counts && val.counts.PREV)  || 0,
-                EI:    (val.counts && val.counts.EI)     || 0,
-                TV:    (val.counts && val.counts.TV)     || 0
-              }
-            };
+      data = {};
+      for (const row of rows) {
+        const key = row.day;  // YYYY-MM-DD
+        data[key] = {
+          workDay: typeof row.work_day === 'boolean' ? row.work_day : null,
+          counts: {
+            CORR:  Number(row.corr)  || 0,
+            PRECO: Number(row.preco) || 0,
+            PREV:  Number(row.prev)  || 0,
+            EI:    Number(row.ei)    || 0,
+            TV:    Number(row.tv)    || 0
           }
-        }      } catch (_) { /* silencioso */ }
-    }
-
-    function cleanupOtherMonths() {
-      // Eliminar datos de otros meses
-      for (const key of Object.keys(data)) {
-        const parts = key.split('-');
-        if (parts[0] !== String(currentYear)) {
-          delete data[key];
-        } else if (String(currentMonth + 1).padStart(2, '0') !== parts[1]) {
-          delete data[key];
-        }
+        };
       }
     }
 
     async function saveData() {
-      if (!selectedDay || !data[selectedDay]) return;
+      if (!selectedDay || !session || !data[selectedDay] || !currentUser) return;
+
       const entry = data[selectedDay];
-      const counts = entry.counts || {};
+      // Siempre enviar TODAS las conteos (incluso ceros) para que bajar a 0 persista
+      const payload = {
+        user_id: currentUser.id,
+        day: selectedDay,                // YYYY-MM-DD
+        work_day: typeof entry.workDay === 'boolean' ? entry.workDay : null,
+        corr: Number(entry.counts.CORR)  || 0,
+        preco: Number(entry.counts.PRECO) || 0,
+        prev: Number(entry.counts.PREV)  || 0,
+        ei:   Number(entry.counts.EI)    || 0,
+        tv:   Number(entry.counts.TV)    || 0
+      };
 
-      // Construir payload solo con campos que cambiaron vs. lo cargado de DB
-      // Merge-upsert no aplica column defaults si envías el campo como null/0,
-      // así que solo incluimos los valores > 0 o work_day explícito (toggled).
-      const dbEntry = data[selectedDay]; // this IS entry, just for clarity
-      const payload = { day: selectedDay };
+      // Buscar si ya existe un registro para este usuario+day
+      const { data: existing } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .eq('day', selectedDay)
+        .maybeSingle();
 
-      // work_day: enviar solo si fue explícitamente toggled (boolean) vs undefined/null load
-      if (typeof entry.workDay === 'boolean') {
-        payload.work_day = !!entry.workDay;
+      let result;
+      if (existing && existing.id) {
+        // Actualizar registro existente
+        result = await supabase
+          .from('tasks')
+          .update(payload)
+          .eq('id', existing.id);
+      } else {
+        // Insertar nuevo
+        result = await supabase
+          .from('tasks')
+          .insert(payload);
       }
 
-      // counts > 0 → incluir en el payload
-      const T = { CORR: 'corr', PRECO: 'preco', PREV: 'prev', EI: 'ei', TV: 'tv' };
-      for (const [type, col] of Object.entries(T)) {
-        if ((counts[type] || 0) > 0) {
-          payload[col] = Math.max(counts[type], 0);
-        }
+      if (result.error) {
+        console.error('Supabase save error:', result.error);
+        showToast('Guardado falló: ' + (result.error.message || 'error desconocido'), true);
+        return false;
       }
-
-      // Si no hubo cambios relevantes, no enviar nada a la DB (evita sobreescribir con 0)
-      const hasChange = typeof entry.workDay === 'boolean' || Object.keys(payload).length > 1;
-      if (!hasChange) return;
-
-      try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: {
-            ..._headers(),
-            'On-Conflict': 'day',
-            'Prefer': 'resolution=merge-upsert'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok && res.status !== 201 && res.status !== 204) {
-          console.warn('Supabase upsert falló:', res.status, res.statusText);
-        } else {
-          console.log('✓ guardado', selectedDay, payload);
-        }
-      } catch (err) {
-        console.error('Supabase save err:', err);
-      }
-
-      // Fallback sessionStorage — guardar siempre todo en memoria
-      try {
-        const stored = JSON.parse(sessionStorage.getItem('rendimiento_mensual_tmp') || '{}');
-        stored[selectedDay] = { workDay: entry.workDay, counts: { ...counts } };
-        sessionStorage.setItem('rendimiento_mensual_tmp', JSON.stringify(stored));
-      } catch (_) {}
+      showToast('Datos guardados ✓', false);
+      return true;
     }
 
     /* =========================================================
@@ -875,20 +1159,9 @@
       for (const [dayNum] of realDays) {
         const key = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
         const entry = data[key];
-        // Día es laboral? (por defecto Lu-Vi, salvo override)
-        const dow = dayNum === null ? 0 : (() => {
-          return new Date(currentYear, currentMonth, dayNum).getDay();
-        })();
-
-        let isWorkDay;
-        if (entry && entry.workDay !== null && entry.workDay !== undefined) {
-          isWorkDay = !!entry.workDay;
-        } else {
-          // Por defecto: Lu=1..Vi=5 → laboral; Sa=6, Do=7 → no laboral
-          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
-        }
-
-        if (isWorkDay) workDayCountTotal++;
+        // Día es laboral? (usar función centralizada)
+        const wd = isWorkDay(key, entry);
+        if (wd) workDayCountTotal++;
 
         const pts = dayPoints(entry);
         totalPts += pts;
@@ -899,18 +1172,7 @@
         const key = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
         const entry = data[key];
 
-        const dow = dayNum === null ? 0 : (() => {
-          return new Date(currentYear, currentMonth, dayNum).getDay();
-        })();
-
-        let isWorkDay;
-        if (entry && entry.workDay !== null && entry.workDay !== undefined) {
-          isWorkDay = !!entry.workDay;
-        } else {
-          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
-        }
-
-        if (isWorkDay && dayPoints(entry) > 0) {
+        if (isWorkDay(key, entry) && dayPoints(entry) > 0) {
           loadedDayCount++;
         }
       }
@@ -979,19 +1241,13 @@
           cell.classList.add('today');
         }
 
-        // ¿Es laboral en este día?
-        let isWorkDay = false;
+        // ¿Es laboral en este día? (usar función centralizada)
         const entry = data[dateStr];
-        if (entry && (entry.workDay !== null || entry.workDay !== undefined)) {
-          isWorkDay = !!entry.workDay;
-        } else {
-          isWorkDay = DEFAULT_WORK_DAYS.includes(dow);
-        }
-
+        const wd = isWorkDay(dateStr, entry);
         // ¿Tiene carga?
         const hasScore = dayPoints(entry) > 0;
-        if (isWorkDay && hasScore) cell.classList.add('has-score');
-        if (!isWorkDay) cell.classList.add('nonwork-day');
+        if (wd && hasScore) cell.classList.add('has-score');
+        if (!wd) cell.classList.add('nonwork-day');
 
         // Selección activa
         if (selectedDay === dateStr) {
@@ -1261,12 +1517,7 @@
       const isoDow = dow === 0 ? 7 : dow;
 
       const entry = data[selectedDay];
-      let isWorkDay;
-      if (entry && (entry.workDay !== null || entry.workDay !== undefined)) {
-        isWorkDay = !!entry.workDay;
-      } else {
-        isWorkDay = DEFAULT_WORK_DAYS.includes(isoDow);
-      }
+      const isWorkVal = isWorkDay(selectedDay, entry);
 
       const isWeekend = isoDow >= 6;
 
@@ -1274,21 +1525,21 @@
       const toggleText = document.getElementById('toggleText');
       const toggleWorkDay = document.getElementById('toggleWorkDay');
 
-      if (isWeekend && !isWorkDay) {
+      if (isWeekend && !isWorkVal) {
         // Sábados/domingos por defecto no laborales — toggle habilitado para marcarlos
         if (toggleIcon) toggleIcon.textContent = '⬜';
         if (toggleText) toggleText.textContent = 'Marcar como laboral';
         if (toggleWorkDay) toggleWorkDay.classList.remove('active');
-      } else if (isWeekend && isWorkDay) {
+      } else if (isWeekend && isWorkVal) {
         if (toggleIcon) toggleIcon.textContent = '✅';
         if (toggleText) toggleText.textContent = 'Día laboral';
         if (toggleWorkDay) toggleWorkDay.classList.add('active');
       } else {
         // Lu-Vi: por defecto laborables, pueden desmarcar
-        if (toggleIcon) toggleIcon.textContent = isWorkDay ? '✅' : '⬜';
-        if (toggleText) toggleText.textContent = isWorkDay ? 'Día laboral' : 'Desmarcar como no laboral';
+        if (toggleIcon) toggleIcon.textContent = isWorkVal ? '✅' : '⬜';
+        if (toggleText) toggleText.textContent = isWorkVal ? 'Día laboral' : 'Desmarcar como no laboral';
         if (toggleWorkDay) {
-          if (isWorkDay) {
+          if (isWorkVal) {
             toggleWorkDay.classList.add('active');
           } else {
             toggleWorkDay.classList.remove('active');
@@ -1423,6 +1674,38 @@
         if (!selectedDay) {
           selectedDay = `${currentYear}-${String(currentMonth + 1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         }
+
+        // ── Chequear sesión ──
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        // Siempre registrar listener del form de auth (el overlay se muestra en ambos casos)
+        const authForm = document.getElementById('authForm');
+        if (authForm) authForm.addEventListener('submit', handleAuth);
+
+        // Botón logout (siempre registro, incluso si estamos logueados o no)
+        const btnLogout = document.getElementById('btnLogout');
+        if (btnLogout) btnLogout.addEventListener('click', handleLogout);
+
+        if (sessionError || !session) {
+          showAuth();
+          return; // detener init — el login/redirección hará render por nosotros
+        }
+        currentUser = session.user;
+        hideAuth();
+
+        // Suscribirse a cambios de sesión (logout en otra pestaña, refresh, etc.)
+        supabase.auth.onAuthStateChange((_event, newSession) => {
+          if (newSession && newSession.user) {
+            currentUser = newSession.user;
+            session = newSession;
+            hideAuth();
+            renderAll();
+          } else {
+            currentUser = null;
+            session = null;
+            showAuth();
+          }
+        });
 
         // Delegación de clicks — UNA SOLA VEZ por elemento persistente
         delegateClicks();
