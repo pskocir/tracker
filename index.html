@@ -940,13 +940,27 @@
         // Signup requiere confirmación por email
         get('authEmail').value    = email;          // recordar email usado
         setAuthMode(true);                             // volver a login
+      } else {
+        // Login exitoso (o signup sin confirmación): verificar sesión activa
+        const { data: { session: newSession }, error: sessErr } = await supabase.auth.getSession();
+        if (!sessErr && newSession) {
+          currentUser = newSession.user;
+          session = newSession;
+          hideAuth();
+          loadData().then(renderAll);
+        } else {
+          errorEl.textContent = 'Error al verificar sesión. Intentá de nuevo.';
+        }
       }
     }
 
     async function handleLogout() {
       await supabase.auth.signOut();
       currentUser = null; session = null;
+      // Forzar mostrar el overlay de login (onAuthStateChange puede no dispararse)
       showAuth();
+      const btn = document.getElementById('btnLogout');
+      if (btn) btn.style.display = 'none';
     }
 
     /* =========================================================
