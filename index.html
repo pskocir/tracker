@@ -1442,6 +1442,7 @@
 
         // Cargar datos del mes actual y renderizar
         await loadData();
+        renderAll();
       } catch(err) {
         console.error('Error crítico:', err);
         const app = document.getElementById('app');
