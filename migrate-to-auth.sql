@@ -57,6 +57,11 @@ DROP POLICY IF EXISTS "Users can access own data" ON tasks;
 -- 8) Crear nuevas políticas: cada usuario solo ve/solo su data
 -- ============================================================
 
+DROP POLICY IF EXISTS "Users can select own tasks" ON tasks;
+DROP POLICY IF EXISTS "Users can insert own tasks" ON tasks;
+DROP POLICY IF EXISTS "Users can update own tasks" ON tasks;
+DROP POLICY IF EXISTS "Users can delete own tasks" ON tasks;
+
 CREATE POLICY "Users can select own tasks"
   ON tasks
   FOR SELECT
