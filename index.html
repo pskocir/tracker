@@ -1680,38 +1680,38 @@
         // ── Chequear sesión ──
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        // Siempre registrar listener del form de auth (el overlay se muestra en ambos casos)
+        // 1) Registrar SIEMPRE listeners (independientemente de si hay sesión)
         const authForm = document.getElementById('authForm');
         if (authForm) authForm.addEventListener('submit', handleAuth);
 
-        // Link toggle login/registro
         const authSwitch = document.getElementById('authSwitchText');
         if (authSwitch) authSwitch.addEventListener('click', toggleAuthMode);
 
-        // Botón logout (siempre registro, incluso si estamos logueados o no)
         const btnLogout = document.getElementById('btnLogout');
         if (btnLogout) btnLogout.addEventListener('click', handleLogout);
 
-        if (sessionError || !session) {
-          showAuth();
-          return; // detener init — el login/redirección hará render por nosotros
-        }
-        currentUser = session.user;
-        hideAuth();
-
-        // Suscribirse a cambios de sesión (logout en otra pestaña, refresh, etc.)
+        // 2) Suscribirse SIEMPA a cambios de auth (login, logout, refresh, otra pestaña)
         supabase.auth.onAuthStateChange((_event, newSession) => {
           if (newSession && newSession.user) {
             currentUser = newSession.user;
             session = newSession;
             hideAuth();
-            renderAll();
+            loadData().then(renderAll);
           } else {
             currentUser = null;
             session = null;
             showAuth();
           }
         });
+
+        // 3) Si no hay sesión → mostrar login y detener init
+        if (sessionError || !session) {
+          showAuth();
+          return;
+        }
+
+        currentUser = session.user;
+        hideAuth();
 
         // Delegación de clicks — UNA SOLA VEZ por elemento persistente
         delegateClicks();
