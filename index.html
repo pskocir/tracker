@@ -796,17 +796,29 @@
       if (!selectedDay || !data[selectedDay]) return;
       const entry = data[selectedDay];
       const counts = entry.counts || {};
-      // Enviamos TODOS los campos siempre. Merge-upsert de Supabase escribe
-      // en la DB exactamente lo que llega — no aplica column default para fields presentes con null.
-      const payload = {
-        day: selectedDay,
-        work_day: typeof entry.workDay === 'boolean' ? !!entry.workDay : true,
-        corr:  Math.max(counts.CORR  || 0, 0),
-        preco: Math.max(counts.PRECO || 0, 0),
-        prev:  Math.max(counts.PREV  || 0, 0),
-        ei:    Math.max(counts.EI    || 0, 0),
-        tv:    Math.max(counts.TV    || 0, 0)
-      };
+
+      // Construir payload solo con campos que cambiaron vs. lo cargado de DB
+      // Merge-upsert no aplica column defaults si envías el campo como null/0,
+      // así que solo incluimos los valores > 0 o work_day explícito (toggled).
+      const dbEntry = data[selectedDay]; // this IS entry, just for clarity
+      const payload = { day: selectedDay };
+
+      // work_day: enviar solo si fue explícitamente toggled (boolean) vs undefined/null load
+      if (typeof entry.workDay === 'boolean') {
+        payload.work_day = !!entry.workDay;
+      }
+
+      // counts > 0 → incluir en el payload
+      const T = { CORR: 'corr', PRECO: 'preco', PREV: 'prev', EI: 'ei', TV: 'tv' };
+      for (const [type, col] of Object.entries(T)) {
+        if ((counts[type] || 0) > 0) {
+          payload[col] = Math.max(counts[type], 0);
+        }
+      }
+
+      // Si no hubo cambios relevantes, no enviar nada a la DB (evita sobreescribir con 0)
+      const hasChange = typeof entry.workDay === 'boolean' || Object.keys(payload).length > 1;
+      if (!hasChange) return;
 
       try {
         const res = await fetch(API_BASE, {
