@@ -91,3 +91,18 @@ CREATE POLICY "Users can delete own tasks"
 -- Verificación: mostrar filas actuales
 -- ============================================================
 SELECT day, user_id, work_day, corr, preco, prev, ei, tv FROM tasks ORDER BY day;
+
+-- ============================================================
+-- 4) Reparo: secuencia pg_id de tasks puede estar desincronizada
+--    Si se produjeron "duplicate key value violates unique constraint 'tasks_pkey'"
+--    después de INSERTs manuales o migraciones, corregir:
+-- ============================================================
+
+-- Verificar el valor actual de la secuencia:
+SELECT last_value, is_called FROM tasks_id_seq;
+
+-- Si last_value < MAX(id), ejecutar:
+-- SELECT setval('tasks_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tasks));
+
+-- O simplemente reiniciar desde el máximo:
+-- SELECT setval('tasks_id_seq', (SELECT MAX(id) + 1 FROM tasks));
