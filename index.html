@@ -793,17 +793,14 @@
     }
 
     async function saveData() {
-      // Guardar el día seleccionado en Supabase.
-      // selectedDay es YYYY-MM-DD; guardar day como ISO para consistencia.
       if (!selectedDay || !data[selectedDay]) return;
-
       const entry = data[selectedDay];
       const counts = entry.counts || {};
-      // Siempre enviar TODOS los campos; merge-upsert de Supabase puede
-      // no aplicar column DEFAULTs para nuevas filas.
+      // Enviamos TODOS los campos siempre. Merge-upsert de Supabase escribe
+      // en la DB exactamente lo que llega — no aplica column default para fields presentes con null.
       const payload = {
-        day:   selectedDay,
-        work_day: (typeof entry.workDay === 'boolean') ? !!entry.workDay : null,
+        day: selectedDay,
+        work_day: typeof entry.workDay === 'boolean' ? !!entry.workDay : true,
         corr:  Math.max(counts.CORR  || 0, 0),
         preco: Math.max(counts.PRECO || 0, 0),
         prev:  Math.max(counts.PREV  || 0, 0),
