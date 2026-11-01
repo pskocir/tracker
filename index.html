@@ -698,7 +698,6 @@
 
     let currentYear, currentMonth; // mes visible en el calendario
     let selectedDay = null;         // día seleccionado para carga (null = ninguno)
-    let dbReady = false;            // true cuando los datos ya se cargaron de la BD
 
     /** E structura de datos: { 'YYYY-MM-DD': workDayBool | undefined, counts: { CORR: n, ... } } */
     let data = {};
@@ -742,7 +741,6 @@
             }
           };
         }
-        dbReady = true;
       } catch (err) {
         console.warn('Supabase load falló (usando fallback):', err);
 
