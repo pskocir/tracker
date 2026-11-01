@@ -761,22 +761,25 @@
         const parsed = JSON.parse(raw);
         // Solo fusionar datos del mes actual
         for (const [key, val] of Object.entries(parsed)) {
+          if (typeof key !== 'string' || key.length !== 10) continue;
           const parts = key.split('-').map(Number);
           const yy = String(parts[0]);
-          const mm2 = String(parts[1]).padStart(2,'0');
-          if (String(currentYear) === yy && currentMonthNum() === `-${mm2}-`) continue; // no filtrar correctamente
-          data[key] = {
-            workDay: val.workDay !== undefined ? val.workDay : null,
-            counts: {
-              CORR:  (val.counts && val.counts.CORR)  || 0,
-              PRECO: (val.counts && val.counts.PRECO) || 0,
-              PREV:  (val.counts && val.counts.PREV)  || 0,
-              EI:    (val.counts && val.counts.EI)     || 0,
-              TV:    (val.counts && val.counts.TV)     || 0
-            }
-          };
-        }
-      } catch (_) { /* silencioso */ }
+          const mm2 = String(parts[1]).padStart(2, '0');
+          // Solo incluir si coincide con el mes actual
+          if (String(currentYear) === yy &&
+              String(currentMonth + 1).padStart(2, '0') === mm2) {
+            data[key] = {
+              workDay: val.workDay !== undefined ? val.workDay : null,
+              counts: {
+                CORR:  (val.counts && val.counts.CORR)  || 0,
+                PRECO: (val.counts && val.counts.PRECO) || 0,
+                PREV:  (val.counts && val.counts.PREV)  || 0,
+                EI:    (val.counts && val.counts.EI)     || 0,
+                TV:    (val.counts && val.counts.TV)     || 0
+              }
+            };
+          }
+        }      } catch (_) { /* silencioso */ }
     }
 
     function cleanupOtherMonths() {
