@@ -935,12 +935,24 @@
       btn.textContent  = isSignInMode() ? 'Ingresar' : 'Registrarse';
 
       if (result.error) {
-        errorEl.textContent = result.error.message;
-      } else if (!isSignInMode() && !result.data.user.identities) {
-        // Signup requiere confirmación por email
-        get('authEmail').value    = email;          // recordar email usado
-        setAuthMode(true);                             // volver a login
+        const msg = result.error.message.toLowerCase();
+        // Si ya existe, el usuario puede intentar iniciar sesión en vez de registrarse
+        if (!isSignInMode() && msg.includes('already')) {
+          errorEl.textContent = 'Ya hay una cuenta con ese email. Probá "Iniciar sesión".';
+          setAuthMode(true);                             // volver a login
+        } else {
+          errorEl.textContent = result.error.message;
+        }
       } else {
+        if (!isSignInMode()) {
+          // Signup: ¿requiere confirmación? (identities.length === 0 → sí)
+          const identities = result.data?.user?.identities;
+          if (Array.isArray(identities) && identities.length === 0) {
+            get('authEmail').value    = email;          // recordar email usado
+            setAuthMode(true);                             // volver a login
+            return;                                      // salir, esperar confirmación
+          }
+        }
         // Login exitoso (o signup sin confirmación): verificar sesión activa
         const { data: { session: newSession }, error: sessErr } = await supabase.auth.getSession();
         if (!sessErr && newSession) {
@@ -949,7 +961,14 @@
           hideAuth();
           loadData().then(renderAll);
         } else {
-          errorEl.textContent = 'Error al verificar sesión. Intentá de nuevo.';
+          // Si es signup, no hay sesión inmediata → OK si no requiere confirmación
+          if (!isSignInMode() && result.data?.user) {
+            get('authEmail').value    = email;          // recordar email usado
+            setAuthMode(true);                             // volver a login
+            errorEl.textContent = 'Revisá tu email para confirmar la cuenta.';
+          } else {
+            errorEl.textContent = 'Error al verificar sesión. Intentá de nuevo.';
+          }
         }
       }
     }
